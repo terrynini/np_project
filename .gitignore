@@ -1,7 +1,6 @@
 **/.DS_Store
 *.o
 .vscode
-Test
 npshell
 build
 test_case

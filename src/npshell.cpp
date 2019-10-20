@@ -5,15 +5,17 @@
 
 using namespace std;
 
-vector<string> cmds;
-
 int main(){
-    string cmdline;
     ios_base::sync_with_stdio(false);
     cin.tie(0);
+    string cmdline;
+    vector<string> tokens;
+    vector<Cmd*> cmds;
     while(true){
         getline(cin, cmdline);
-        cmds = CmdSplit(cmdline);
+        cout << "in" << endl;
+        tokens = CmdSplit(cmdline);
+        cmds = CmdParse(tokens);
         executeCommand(cmds);
     }
     return 0;
