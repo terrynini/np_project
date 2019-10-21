@@ -16,6 +16,7 @@ TEST_PROJECT = UnitTest
 ##.SECONDEXPANSION:
 $(BUILDDIR)/$(PROJECT): $(OBJS) $(BUILDDIR) # | $$(dir $$@)
 	$(CC) $(CFLAG) $(OBJS) $(INCS) -o $@
+	$(BUILDDIR)/$(PROJECT)
 
 $(BUILDDIR)/%.o: $(SRCDIRS)/%.cpp 
 	$(CC) $(CFLAG) -c $< $(INCS) -o $@

@@ -1,4 +1,5 @@
 #include "cmd.hpp"
+#include "pipe.hpp"
 #include <sstream>
 #include <map>
 #include <unistd.h>
@@ -23,12 +24,14 @@ std::vector<Cmd*> CmdParse(std::vector<std::string> tokens){
         }
         else if(token[0] == '|' || token[0] == '!'){
             work->flow = token;
+            if(token.size() == 1)
+                work->flow += "1";
             cmds.push_back(new Cmd());
             work = cmds.back();
         }
         else if( token[0] == '>'){
             redirect = true;
-            work->flow = "> ";
+            work->flow = ">";
         }else{
             work->argv.push_back(token);
         }
@@ -38,7 +41,6 @@ std::vector<Cmd*> CmdParse(std::vector<std::string> tokens){
     return cmds;
 }
 
-//static std::vector<std::string> buildin = {std::string("setenv"), std::string("printenv"), std::string("exit")};
 bool isBuildin(Cmd* cmd){
     if(cmd->argv[0] == "setenv"){
         if(cmd->argv.size() < 3)
@@ -59,7 +61,26 @@ bool isBuildin(Cmd* cmd){
     return false;
 }
 
+PipeManager pipeManager;
+
 bool execute(Cmd* cmd){
+    std::array<int,2> pair;
+    //std::cout << "cmd " << cmd->argv[0] << std::endl;
+    if(cmd->flow.size()){
+        if(cmd->flow[0] == '|'){
+            int offset = stoi(cmd->flow.substr(1));
+            //std::cout <<"X";
+            pair = pipeManager.getPipe(offset);
+            if( pair == std::array<int,2>({0,1}) || pair[1] == 1){
+                pipeManager.insertPipe(new Pipe(offset+pipeManager.counter));
+                //std::cout <<"X2";
+                pair = pipeManager.getPipe(offset);
+            }
+        }
+    }else{
+        pair = pipeManager.getPipe(0);
+    }
+    std::cout << pair[0] << " " << pair[1] << std::endl;
     pid_t pid = fork();
     if(pid == -1)
     {
@@ -67,8 +88,14 @@ bool execute(Cmd* cmd){
         return false;   
     }
     if(pid != 0){
-
-    }else{
+        pipeManager.prune();      
+    }else{      
+        dup2(pair[0],0);
+        dup2(pair[1],1);
+        for(auto &ele : pair){
+            if(ele > 2)
+                close(ele);
+        }
         std::vector<char*> args;
         for(auto &arg: cmd->argv){
             args.push_back(const_cast<char*>(arg.c_str()));
@@ -79,6 +106,7 @@ bool execute(Cmd* cmd){
             exit(0);
         }
     }
+    pipeManager.counter += 1;
     return true;
 }
 
@@ -86,7 +114,6 @@ bool executeCommand(std::vector<Cmd*> cmds){
     std::vector<std::string>::iterator it;
     for(auto &cmd : cmds){
         if( !isBuildin(cmd)){
-            
             if(!execute(cmd)){
                 break;
             }

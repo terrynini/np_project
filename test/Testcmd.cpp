@@ -48,5 +48,5 @@ TEST_CASE("Test cmd parse"){
     REQUIRE(cmds[1]->argv == std::vector<std::string>({"number"}));
     cmds = CmdParse(std::vector<std::string>({"removetag0", "test.html", ">", "test2.txt"}));
     REQUIRE(cmds[0]->argv == std::vector<std::string>({"removetag0", "test.html"}));
-    REQUIRE(cmds[0]->flow == "> test2.txt");
+    REQUIRE(cmds[0]->flow == ">test2.txt");
 }
