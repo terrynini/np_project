@@ -13,23 +13,23 @@ std::array<int,2> PipeManager::getPipe(int offset){
             break;
         }
     }
-    // for(auto& pipe: this->pipes){
-    //     if( pipe->count == this->counter){
-    //         result[0] = pipe->pfd[0];
-    //         break;
-    //     }
-    // }
-    for (auto pipe = this->pipes.begin(); pipe!= this->pipes.end(); ){
-        //std::cout << "\tpipe " << (*pipe)->count << " " << (*pipe)->pfd[0] << ' ' << (*pipe)->pfd[1] << std::endl;
-        if( (*pipe)->count == this->counter){
-            result[0] = (*pipe)->pfd[0];
-            //std::cout << "\terase " << (*pipe)->pfd[0] <<  " " << (*pipe)->pfd[1] << std::endl;
-            //pipe = this->pipes.erase( pipe );
-            pipe++;
-        }else{
-            pipe++;
+    for(auto& pipe: this->pipes){
+        if( pipe->count == this->counter){
+            result[0] = pipe->pfd[0];
+            break;
         }
     }
+    // for (auto pipe = this->pipes.begin(); pipe!= this->pipes.end(); ){
+    //     //std::cout << "\tpipe " << (*pipe)->count << " " << (*pipe)->pfd[0] << ' ' << (*pipe)->pfd[1] << std::endl;
+    //     if( (*pipe)->count == this->counter){
+    //         result[0] = (*pipe)->pfd[0];
+    //         //std::cout << "\terase " << (*pipe)->pfd[0] <<  " " << (*pipe)->pfd[1] << std::endl;
+    //         //pipe = this->pipes.erase( pipe );
+    //         pipe++;
+    //     }else{
+    //         pipe++;
+    //     }
+    // }
     return result;
 }
 
