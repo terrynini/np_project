@@ -3,6 +3,7 @@
 #include <vector>
 #include "cmd.hpp"
 
+
 using namespace std;
 
 int main(){
@@ -11,9 +12,9 @@ int main(){
     string cmdline;
     vector<string> tokens;
     vector<Cmd*> cmds;
+    setenv("PATH","bin:.",1);
     while(true){
         getline(cin, cmdline);
-        cout << "in" << endl;
         tokens = CmdSplit(cmdline);
         cmds = CmdParse(tokens);
         executeCommand(cmds);

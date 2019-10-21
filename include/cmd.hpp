@@ -2,33 +2,19 @@
 #include <iostream>
 #include <vector>
 #include <array>
+#include <unistd.h>
+
+extern char ** environ;
 
 class Cmd{
 public:
-    Cmd(){
-        this->funcp = NULL;
-    }
-    Cmd(bool (*funcp)()){
-        this->funcp = funcp;
-    }
-    ~Cmd(){ argv.clear();}
-    bool execute(){
-        if(this->funcp){
-            return funcp();
-        }
-        return false;
-    }
     std::vector<std::string> argv;
     std::string flow;
-private:
-    bool (*funcp)();
 };
 
 std::vector<std::string> CmdSplit(std::string);
 std::vector<Cmd*> CmdParse(std::vector<std::string>);
-bool setupBuildin();
 bool executeCommand(std::vector<Cmd*>);
-bool buildin_setenv();
-bool buildin_printenv();
-bool buildin_exit();
-bool buildin_runfile(std::string);
+void buildin_setenv(std::string, std::string);
+void  buildin_printenv(std::string);
+void buildin_exit();
