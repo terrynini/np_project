@@ -59,22 +59,36 @@ bool isBuildin(Cmd* cmd){
     return false;
 }
 
-bool executeCommand(std::vector<Cmd*> cmds){
-    pid_t pid;
-    std::vector<std::string>::iterator it;
-    for(int i = 0 ; i < cmds.size() ; i++){
-        if( !isBuildin(cmds[i])){
-            pid =fork();
-            if(pid == -1)
-            {
-                std::cerr << "Fail to fork" << std::endl;
-                break;
-            }
-            if(pid != 0){
+bool execute(Cmd* cmd){
+    pid_t pid = fork();
+    if(pid == -1)
+    {
+        std::cerr << "Fail to fork" << std::endl;
+        return false;   
+    }
+    if(pid != 0){
 
-            }else{
-                char* args[] = {"ls", NULL};
-                execv("/bin/ls", args);
+    }else{
+        std::vector<char*> args;
+        for(auto &arg: cmd->argv){
+            args.push_back(const_cast<char*>(arg.c_str()));
+        }
+        args.push_back(nullptr);
+        if(execvp(args[0], args.data()) == -1){
+            std::cerr << "Command not found" << std::endl;
+            exit(0);
+        }
+    }
+    return true;
+}
+
+bool executeCommand(std::vector<Cmd*> cmds){
+    std::vector<std::string>::iterator it;
+    for(auto &cmd : cmds){
+        if( !isBuildin(cmd)){
+            
+            if(!execute(cmd)){
+                break;
             }
         }
     }
