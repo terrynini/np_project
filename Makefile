@@ -1,5 +1,5 @@
 CC = g++
-CFLAG = -std=c++11 -w
+CFLAG = -std=c++11
 INCS = -I./include
 BUILDDIR = build
 SRCDIRS = src

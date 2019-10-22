@@ -5,7 +5,11 @@
 #include <unistd.h>
 #include <algorithm>
 #include <iterator>
-#include <fcntl.h>
+#include <functional>
+
+extern PipeManager pipeManager;
+extern pid_t tailCommand;
+std::map<std::string,std::function<void (std::vector<std::string>)>> Buildin;
 
 std::vector<std::string> CmdSplit(std::string cmdline){ 
     std::istringstream css(cmdline);
@@ -19,6 +23,7 @@ std::vector<Cmd*> CmdParse(std::vector<std::string> tokens){
     cmds.push_back(new Cmd());
     Cmd* work = cmds.back();
     bool redirect = false;
+
     for (auto &token : tokens){
         if (redirect){
             work->flow += token;
@@ -38,109 +43,84 @@ std::vector<Cmd*> CmdParse(std::vector<std::string> tokens){
             work->argv.push_back(token);
         }
     }
+
     if(work->argv.size() == 0)
         cmds.pop_back();
+
     return cmds;
 }
 
-bool isBuildin(Cmd* cmd){
-    if(cmd->argv[0] == "setenv"){
-        if(cmd->argv.size() < 3)
-            std::cerr << "Need more argument" << std::endl;
-        else
-            buildin_setenv(cmd->argv[1],cmd->argv[2]);
-        return true;
-    }else if (cmd->argv[0] == "printenv"){
-        if(cmd->argv.size() < 2)
-            std::cerr << "Need more argument" << std::endl;
-        else
-            buildin_printenv(cmd->argv[1]);
-        return true;
-    }else if (cmd->argv[0] == "exit"){
-        buildin_exit();
-        return true;
-    }
-    return false;
-}
-
-PipeManager pipeManager;
-pid_t tailCommand;
-
-bool execute(Cmd* cmd){
+void execute(Cmd* cmd){
     std::array<int,2> pair;
-    int fileRedirect = 0;
-    //std::cout << "cmd " << cmd->argv[0] << std::endl;
-    if(cmd->flow.size()){
-        if(cmd->flow[0] == '|' || cmd->flow[0] == '!'){
-            int offset = stoi(cmd->flow.substr(1));
-            //std::cout <<"X";
-            pair = pipeManager.getPipe(offset);
-            if( pair == std::array<int,2>({0,1}) || pair[1] == 1){
-                pipeManager.insertPipe(new Pipe(offset+pipeManager.counter));
-                //std::cout <<"X2";
-                pair = pipeManager.getPipe(offset);
-            }
-        }else{
-            //file redirect
-            fileRedirect = open(cmd->flow.substr(1).c_str(), O_WRONLY);
-        }
-    }else{
-        pair = pipeManager.getPipe(0);
-    }
-    if(fileRedirect)
-        pair[1] = fileRedirect;
-    pid_t pid = fork();
-    if(pid == -1)
+    pipeManager.getIO(cmd, pair);
+
+    pid_t pid;
+    while((pid = fork()) == -1)
     {
-        std::cerr << "Fail to fork" << std::endl;
-        return false;   
+        usleep(5000);
     }
+    
     if(pid != 0){
         pipeManager.prune();   
         tailCommand = pid;
     }else{      
         dup2(pair[0],0);
         dup2(pair[1],1);
-        if(cmd->flow[0] == '!')
-            dup2(pair[1],2);
-        pipeManager.prune();
-        if(fileRedirect)
-            close(fileRedirect);
-        std::vector<char*> args;
-        for(auto &arg: cmd->argv){
-            args.push_back(const_cast<char*>(arg.c_str()));
+        if(cmd->flow[0] == '!'){
+            dup2(pair[1],2);  
         }
-        args.push_back(nullptr);
-        if(execvp(args[0], args.data()) == -1){
-            std::cerr << "Unknown command: [" << args[0] << "]." << std::endl;
+        pipeManager.prune();
+        if(cmd->Exec() == -1){
+            std::cerr << "Unknown command: [" << cmd->argv[0] << "]." << std::endl;
             exit(0);
         }
     }
-    return true;
 }
 
-bool executeCommand(std::vector<Cmd*> cmds){
+void evalCommand(std::vector<Cmd*> cmds){
     tailCommand = 0;
     std::vector<std::string>::iterator it;
+
     for(auto &cmd : cmds){
-        if( !isBuildin(cmd)){
-            if(!execute(cmd)){
-                break;
-            }
+        if( !runBuildin(cmd)){
+            execute(cmd);
         }
         pipeManager.counter += 1;
     }
-    return true;
 }
 
-void buildin_setenv(std::string name, std::string value){
-    setenv(name.c_str(),value.c_str(),1);
+int Cmd::Exec(){
+    std::vector<char*> args;
+    for(auto &arg: this->argv){
+        args.push_back(const_cast<char*>(arg.c_str()));
+    }
+    args.push_back(nullptr);
+    return execvp(args[0], args.data());
 }
 
-void  buildin_printenv(std::string name){
-    std::cout << getenv(name.c_str()) << std::endl;
+void initBuildin(){
+    Buildin["setenv"] = [](std::vector<std::string> argv){
+        if(argv.size() < 3)
+            std::cerr << "Need more arguments" << std::endl;
+        else
+            setenv(argv[1].c_str(),argv[2].c_str(),1);
+    };
+    Buildin["printenv"] = [](std::vector<std::string> argv){
+        if(argv.size() < 2)
+            std::cerr << "Need more argument" << std::endl;
+        else
+            std::cout << getenv(argv[1].c_str()) << std::endl;
+    };
+    Buildin["exit"] = [](std::vector<std::string> argv){
+        exit(0);
+    };   
 }
 
-void buildin_exit(){
-    exit(0);
+bool runBuildin(Cmd* cmd){
+    auto func = Buildin.find(cmd->argv[0]);
+    if( func != Buildin.end()){
+        (func->second)(cmd->argv);
+        return true;
+    }
+    return false;
 }
