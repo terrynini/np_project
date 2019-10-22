@@ -14,7 +14,7 @@ TEST_TARGET = $(filter-out %$(PROJECT).o,$(OBJS))
 TEST_PROJECT = UnitTest
 
 ##.SECONDEXPANSION:
-$(BUILDDIR)/$(PROJECT): $(OBJS) $(BUILDDIR) # | $$(dir $$@)
+$(BUILDDIR)/$(PROJECT): $(BUILDDIR) $(OBJS) # | $$(dir $$@)
 	$(CC) $(CFLAG) $(OBJS) $(INCS) -o $@
 	$(BUILDDIR)/$(PROJECT)
 
