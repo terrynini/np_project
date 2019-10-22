@@ -61,8 +61,9 @@ void execute(Cmd* cmd){
     }
     
     if(pid != 0){
-        pipeManager.prune();   
-        tailCommand = pid;
+        pipeManager.prune();
+        if(cmd->flow[0] != '|' && cmd->flow[0] != '!')   
+            tailCommand = pid;
     }else{      
         dup2(pair[0],0);
         dup2(pair[1],1);
