@@ -9,6 +9,8 @@
 
 extern PipeManager pipeManager;
 extern pid_t tailCommand;
+extern bool tailPipe;
+
 std::map<std::string,std::function<void (std::vector<std::string>)>> Buildin;
 
 std::vector<std::string> CmdSplit(std::string cmdline){ 
@@ -62,8 +64,14 @@ void execute(Cmd* cmd){
     
     if(pid != 0){
         pipeManager.prune();
-        if(cmd->flow[0] != '|' && cmd->flow[0] != '!')   
-            tailCommand = pid;
+        if( cmd->flow.size() && (cmd->flow[0] == '|' || cmd->flow[0] == '!'))
+            tailPipe = true;
+        else
+        {
+            tailPipe = false;
+        }
+        
+        tailCommand = pid;
     }else{      
         dup2(pair[0],0);
         dup2(pair[1],1);
@@ -80,7 +88,7 @@ void execute(Cmd* cmd){
 
 void evalCommand(std::vector<Cmd*> cmds){
     tailCommand = 0;
-    std::vector<std::string>::iterator it;
+    tailPipe = false;
 
     for(auto &cmd : cmds){
         if( !runBuildin(cmd)){
