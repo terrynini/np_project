@@ -35,6 +35,7 @@ void spawnShell(){
     string cmdline;
     vector<string> tokens;
     vector<Cmd*> cmds;
+    cin.clear();
     while(std::cout << "% " << flush && getline(cin, cmdline)){
         dprintf(output,"-- %s --\n", cmdline.c_str());
         tokens = CmdSplit(cmdline);
