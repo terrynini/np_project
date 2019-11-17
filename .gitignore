@@ -1,0 +1,6 @@
+**/.DS_Store
+*.o
+.vscode
+npshell
+build
+test_case
