@@ -26,16 +26,15 @@ void init(){
     cin.tie(0);
     signal(SIGCHLD, childHandler);
     initBuildin();
-    clearenv();
-    setenv("PATH","bin:.",1);
 }
 int input, output ,error;
 void spawnShell(){
+    clearenv();
+    setenv("PATH","bin:.",1);
     pipeManager = new PipeManager(); 
     string cmdline;
     vector<string> tokens;
     vector<Cmd*> cmds;
-    cin.clear();
     while(std::cout << "% " << flush && getline(cin, cmdline)){
         dprintf(output,"-- %s --\n", cmdline.c_str());
         tokens = CmdSplit(cmdline);
@@ -51,10 +50,15 @@ void spawnShell(){
 
 int main(int argc, char** argv){
     init();
-            input = dup(0);
-        output = dup(1);
-        error = dup(2);
-    int sockfd = tcpBind();
+    input = dup(0);
+    output = dup(1);
+    error = dup(2);
+    int port, len = 1;
+    if (argc > 1)
+        port = atoi(argv[1]);
+    else
+        port = 5566;
+    int sockfd = tcpBind(port, len);
     sockaddr_in clientInfo;
     socklen_t addrlen = sizeof(clientInfo);
     int infd = 0;

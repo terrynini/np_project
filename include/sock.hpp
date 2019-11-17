@@ -3,4 +3,4 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-int tcpBind();
+int tcpBind(int,int);
