@@ -5,9 +5,10 @@
 #include <unistd.h>
 #include <cstdio>
 
-PipeManager pipeManager;
+PipeManager* pipeManager;
 pid_t tailCommand;
 bool  tailPipe;
+
 std::array<int,2> PipeManager::getPipe(int offset){
     std::array<int,2> result = {0,1};
     for(auto& pipe: this->pipes){

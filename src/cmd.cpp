@@ -7,7 +7,7 @@
 #include <iterator>
 #include <functional>
 
-extern PipeManager pipeManager;
+extern PipeManager* pipeManager;
 extern pid_t tailCommand;
 extern bool tailPipe;
 
@@ -54,7 +54,7 @@ std::vector<Cmd*> CmdParse(std::vector<std::string> tokens){
 
 void execute(Cmd* cmd){
     std::array<int,2> pair;
-    pipeManager.getIO(cmd, pair);
+    pipeManager->getIO(cmd, pair);
 
     pid_t pid;
     while((pid = fork()) == -1)
@@ -63,7 +63,7 @@ void execute(Cmd* cmd){
     }
     
     if(pid != 0){
-        pipeManager.prune();
+        pipeManager->prune();
         if( cmd->flow.size() && (cmd->flow[0] == '|' || cmd->flow[0] == '!'))
             tailPipe = true;
         else
@@ -78,7 +78,7 @@ void execute(Cmd* cmd){
         if(cmd->flow[0] == '!'){
             dup2(pair[1],2);  
         }
-        pipeManager.prune();
+        pipeManager->prune();
         if(cmd->Exec() == -1){
             std::cerr << "Unknown command: [" << cmd->argv[0] << "]." << std::endl;
             exit(0);
@@ -94,7 +94,7 @@ void evalCommand(std::vector<Cmd*> cmds){
         if( !runBuildin(cmd)){
             execute(cmd);
         }
-        pipeManager.counter += 1;
+        pipeManager->counter += 1;
     }
 }
 
