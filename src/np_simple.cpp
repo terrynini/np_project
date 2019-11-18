@@ -27,7 +27,8 @@ void init(){
     signal(SIGCHLD, childHandler);
     initBuildin();
 }
-int input, output ,error;
+
+
 void spawnShell(){
     clearenv();
     setenv("PATH","bin:.",1);
@@ -37,23 +38,22 @@ void spawnShell(){
     vector<Cmd*> cmds;
     cin.clear();
     while(std::cout << "% " << flush && getline(cin, cmdline)){
-        dprintf(output,"-- %s --\n", cmdline.c_str());
         tokens = CmdSplit(cmdline);
         cmds = CmdParse(tokens);
-        dprintf(output,"eval\n");
-        evalCommand(cmds);
-        dprintf(output,"wailt\n");
+        if( evalCommand(cmds) == -1){
+            delete pipeManager;
+            return ;
+        }
         waitTail();
-        dprintf(output,"leave\n");
     }
     delete pipeManager;
 }
 
 int main(int argc, char** argv){
     init();
-    input = dup(0);
-    output = dup(1);
-    error = dup(2);
+    int input = dup(0);
+    int output = dup(1);
+    int error = dup(2);
     int port, len = 1;
     if (argc > 1)
         port = atoi(argv[1]);
@@ -70,6 +70,9 @@ int main(int argc, char** argv){
         dup2(infd, 2);
         close(infd);
         spawnShell();
+        dup2(input, 0);
+        dup2(output, 1);
+        dup2(error, 2);
     }
 
     return 0;

@@ -18,9 +18,9 @@ public:
 };
 
 void initBuildin();
-bool runBuildin(Cmd*);
+int runBuildin(Cmd*);
 void execute(Cmd*);
-void evalCommand(std::vector<Cmd*>);
+int evalCommand(std::vector<Cmd*>);
 std::vector<std::string> CmdSplit(std::string);
 std::vector<Cmd*> CmdParse(std::vector<std::string>);
 

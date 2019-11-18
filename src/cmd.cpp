@@ -11,7 +11,7 @@ extern PipeManager* pipeManager;
 extern pid_t tailCommand;
 extern bool tailPipe;
 
-std::map<std::string,std::function<void (std::vector<std::string>)>> Buildin;
+std::map<std::string,std::function<bool (std::vector<std::string>)>> Buildin;
 
 std::vector<std::string> CmdSplit(std::string cmdline){ 
     std::istringstream css(cmdline);
@@ -86,16 +86,20 @@ void execute(Cmd* cmd){
     }
 }
 
-void evalCommand(std::vector<Cmd*> cmds){
+int evalCommand(std::vector<Cmd*> cmds){
     tailCommand = 0;
     tailPipe = false;
-
+    int status;
     for(auto &cmd : cmds){
-        if( !runBuildin(cmd)){
+        status = runBuildin(cmd) ;
+        if( status == 0){
             execute(cmd);
+        }else if (status != 1){
+            return status;
         }
         pipeManager->counter += 1;
     }
+    return 1;
 }
 
 int Cmd::Exec(){
@@ -108,28 +112,32 @@ int Cmd::Exec(){
 }
 
 void initBuildin(){
-    Buildin["setenv"] = [](std::vector<std::string> argv){
+    Buildin["setenv"] = [](std::vector<std::string> argv) -> bool{
         if(argv.size() < 3)
             std::cerr << "Need more arguments" << std::endl;
         else
             setenv(argv[1].c_str(),argv[2].c_str(),1);
+        return true;
     };
-    Buildin["printenv"] = [](std::vector<std::string> argv){
+    Buildin["printenv"] = [](std::vector<std::string> argv) -> bool{
         if(argv.size() < 2)
             std::cerr << "Need more argument" << std::endl;
         else
             std::cout << getenv(argv[1].c_str()) << std::endl;
+        return true;
     };
-    Buildin["exit"] = [](std::vector<std::string> argv){
-        exit(0);
+    Buildin["exit"] = [](std::vector<std::string> argv) -> bool{
+        return false;
     };   
 }
 
-bool runBuildin(Cmd* cmd){
+int runBuildin(Cmd* cmd){
     auto func = Buildin.find(cmd->argv[0]);
     if( func != Buildin.end()){
-        (func->second)(cmd->argv);
-        return true;
+        if((func->second)(cmd->argv))
+            return 1;
+        else
+            return -1;
     }
-    return false;
+    return 0;
 }
