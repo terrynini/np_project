@@ -8,7 +8,6 @@
 
 #ifndef CMD_H
 #define CMD_H
-extern char ** environ;
 
 class Cmd{
 public:

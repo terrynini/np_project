@@ -122,8 +122,11 @@ void initBuildin(){
     Buildin["printenv"] = [](std::vector<std::string> argv) -> bool{
         if(argv.size() < 2)
             std::cerr << "Need more argument" << std::endl;
-        else
-            std::cout << getenv(argv[1].c_str()) << std::endl;
+        else{
+            char* s = getenv(argv[1].c_str());
+            if(s)
+                std::cout << s << std::endl;
+        }
         return true;
     };
     Buildin["exit"] = [](std::vector<std::string> argv) -> bool{
