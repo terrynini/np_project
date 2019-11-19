@@ -11,12 +11,48 @@ user* UserManager::getUser(int sockfd){
     }
 }
 
-int UserManager::addUser(int sockfd){
+void UserManager::switchUser(int sockfd){
+    for(auto &user : this->users){
+        if(user.sockfd == sockfd){
+            this->currentUser = &user;
+            break;
+        }
+    }
+}
+void UserManager::broadcast(std::string message){
+    for(auto &user : this->users){
+        dprintf(user.sockfd, "%s", message.c_str());
+    }
+}
+
+void UserManager::deleteUser(int sockfd){
+    for(auto iter=this->users.begin(); iter != this->users.end() ; iter++){
+        if(iter->sockfd == sockfd){
+            this->users.erase(iter);
+            return;
+        }
+    }
+}
+
+int UserManager::addUser(int sockfd, sockaddr_in * client_info = nullptr ){
     user newUser;
     newUser.sockfd = sockfd;
     newUser.env.push_back("PATH=bin:.");
-    newUser.user_id = this->count++;
+    newUser.IP = inet_ntoa(client_info->sin_addr);
+    newUser.port = ntohs(client_info->sin_port);
+    
+    int count = 1;
+    auto iter = this->users.begin();
+    while(true){
+        if( iter == this->users.end() || (iter)->user_id != count ){
+            newUser.user_id = count;
+            break;
+        }
+        count ++;
+        iter ++ ;
+    }    
     this->users.push_back(newUser);
+    this->broadcast("*** User '(no name)' entered from " + newUser.IP + ":" + std::to_string(newUser.port) + ". ***\n");
     return newUser.user_id;
 }
 
@@ -36,3 +72,4 @@ void user::saveEnv(){
             this->env.push_back(environ[i++]);
     }
 }
+

@@ -20,6 +20,21 @@ int input ;
 int output;
 int error ;
 
+inline void talk2sock(int sockfd){
+    dup2(sockfd, 0);
+    dup2(sockfd, 1);
+    dup2(sockfd, 2);
+}
+
+inline void talk2local(){
+    dup2(input, 0);
+    dup2(output, 1);
+    dup2(error, 2);
+}
+
+void serverBanner(){
+    cout << "****************************************\n** Welcome to the information server. **\n****************************************" << endl;
+}
 void childHandler(int signo){
   while (waitpid(-1, NULL, WNOHANG) > 0);
 }
@@ -40,8 +55,7 @@ void init(){
     clearenv();
 }
 
-void talkToSocket(){}
-void spawnShell(){
+bool spawnShell(){
     string cmdline;
     vector<string> tokens;
     vector<Cmd*> cmds;
@@ -50,13 +64,14 @@ void spawnShell(){
         tokens = CmdSplit(cmdline);
         cmds = CmdParse(tokens);
         if( evalCommand(cmds) == -1){
-            //should delete current user
-            //delete userManager;
-            return ;
+            return false;
         }
         waitTail();
         std::cout << "% " << flush ;
+    }else{
+        return false;
     }
+    return true;
 }
 
 int main(int argc, char** argv){
@@ -81,48 +96,39 @@ int main(int argc, char** argv){
         tv.tv_sec = 2;
         tv.tv_usec = 500000;
         readfds = activatefds;
-        
-        if( select(maxfd, &readfds, NULL, NULL, &tv) )
+        if( select(maxfd, &readfds, NULL, NULL, &tv) > 0)
         {
             for(int trav_fd = 0 ; trav_fd < FD_SETSIZE; trav_fd++){
                 if(FD_ISSET(trav_fd, &readfds)){
                     if(trav_fd == sockfd){
                         client_fd = accept(sockfd, (struct sockaddr *)&clientInfo, &addrlen);
                         if(client_fd > 0){
-                            dup2(client_fd, 0);
-                            dup2(client_fd, 1);
-                            dup2(client_fd, 2);
-                            //close(client_fd); should be done at log out
-                            cout << "you are user " << userManager.addUser(client_fd) << endl;;
+                            talk2sock(client_fd);
+                            serverBanner();
+                            userManager.addUser(client_fd, &clientInfo);
                             std::cout << "% " << flush;
-                            //should not spawn shell at first
-                            //spawnShell();
-                            dup2(input, 0);
-                            dup2(output, 1);
-                            dup2(error, 2);
+                            talk2local();
                             FD_SET(client_fd, &activatefds);
                             maxfd = (client_fd >= maxfd ) ? client_fd + 1 : maxfd;
                         }
                     }else{
-                        dup2(trav_fd, 0);
-                        dup2(trav_fd, 1);
-                        dup2(trav_fd, 2);
-                        user* nowUser = userManager.getUser(trav_fd);
-                        //extract env
-                        nowUser->applyEnv();
-                        pipeManager = nowUser->pipeManager;
-                        spawnShell();
-                        //save env
-                        nowUser->saveEnv();
+                        talk2sock(trav_fd);
+                        userManager.switchUser(trav_fd);
+                        userManager.currentUser->applyEnv();
+                        pipeManager = userManager.currentUser->pipeManager;
+                        if(!spawnShell()){
+                            userManager.deleteUser(trav_fd);
+                            close(trav_fd);
+                            FD_CLR(trav_fd, &activatefds);
+                        }else{
+                            userManager.currentUser->saveEnv();
+                        }
                         pipeManager = nullptr;
-                        dup2(input, 0);
-                        dup2(output, 1);
-                        dup2(error, 2);
+                        userManager.currentUser = nullptr;
+                        talk2local();
                     }
                 }
             }
-            /* close(i);
-            FD_CLR(i, &activatefds); */
         }
     }
 
