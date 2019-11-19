@@ -11,8 +11,18 @@
 
 class Cmd{
 public:
+    Cmd(){
+        argv.clear();
+        flow = "";
+        userp_in = "";
+        userp_out = "";
+        cmdStr = "";
+    }
     std::vector<std::string> argv;
     std::string flow;
+    std::string userp_in;
+    std::string userp_out;
+    std::string cmdStr;
     int Exec();
 };
 

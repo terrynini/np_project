@@ -3,12 +3,13 @@
 extern char ** environ;
 UserManager userManager;
 
-user* UserManager::getUser(int sockfd){
+user* UserManager::getUser(int user_id){
     for(auto &user : this->users){
-        if(user.sockfd == sockfd){
+        if(user.user_id == user_id){
             return &user;
         }
     }
+    return 0;
 }
 
 void UserManager::switchUser(int sockfd){
@@ -44,6 +45,8 @@ int UserManager::addUser(int sockfd, sockaddr_in * client_info = nullptr ){
     int count = 1;
     auto iter = this->users.begin();
     while(true){
+        if(count > 30)
+            return -1;
         if( iter == this->users.end() || (iter)->user_id != count ){
             newUser.user_id = count;
             break;

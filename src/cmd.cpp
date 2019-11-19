@@ -11,6 +11,7 @@
 extern PipeManager* pipeManager;
 extern UserManager userManager;
 extern pid_t tailCommand;
+extern std::array<std::array<std::array<int,2>,30>,30> userPipe;
 extern bool tailPipe;
 
 std::map<std::string,std::function<bool (std::vector<std::string>)>> Buildin;
@@ -31,32 +32,51 @@ std::vector<Cmd*> CmdParse(std::vector<std::string> tokens){
     for (auto &token : tokens){
         if (redirect){
             work->flow += token;
+            work->cmdStr += " " + token;
             redirect = false;
         }
         else if(token[0] == '|' || token[0] == '!'){
             work->flow = token;
+            work->cmdStr += " " + token;
             if(token.size() == 1)
                 work->flow += "1";
             cmds.push_back(new Cmd());
             work = cmds.back();
         }
-        else if( token[0] == '>'){
-            redirect = true;
-            work->flow = ">";
+        else if( token[0] == '>' || token[0] == '<'){
+            if( token.size() == 1){
+                redirect = true;
+                work->flow = token[0];//">";
+                work->cmdStr += " " + token[0];
+            }else{
+                if( token[0] == '>'){
+                    work->userp_out = token;        
+                    work->cmdStr += " " + token;
+                }else{
+                    work->userp_in = token;
+                    work->cmdStr += " " + token;
+                }
+            }
         }else{
+            work->cmdStr += " " + token;
             work->argv.push_back(token);
         }
     }
-
     if(work->argv.size() == 0)
         cmds.pop_back();
-
     return cmds;
 }
 
 void execute(Cmd* cmd){
     std::array<int,2> pair;
     pipeManager->getIO(cmd, pair);
+    if(pair[0] == -1){
+        std::cout << "*** Error: user #" + cmd->userp_in.substr(1) + " does not exist yet. ***" << std::endl;
+        return;
+    }else if(pair[1] == -1){
+        std::cout << "*** Error: user #" + cmd->userp_out.substr(1) + " does not exist yet. ***" << std::endl;
+        return; 
+    }
 
     pid_t pid;
     while((pid = fork()) == -1)
@@ -66,13 +86,13 @@ void execute(Cmd* cmd){
     
     if(pid != 0){
         pipeManager->prune();
+        clearUserpipe(cmd);
         if( cmd->flow.size() && (cmd->flow[0] == '|' || cmd->flow[0] == '!'))
             tailPipe = true;
         else
         {
             tailPipe = false;
         }
-        
         tailCommand = pid;
     }else{      
         dup2(pair[0],0);
@@ -131,7 +151,8 @@ void initBuildin(){
         }
         return true;
     };
-    Buildin["exit"] = [](std::vector<std::string> argv) -> bool{
+    Buildin["exit"] = [&](std::vector<std::string> argv) -> bool{
+        userManager.broadcast("*** User '"+ ( userManager.currentUser->username=="" ? "(no name)": userManager.currentUser->username) +"' left. ***\n");
         return false;
     };   
     Buildin["who"] = [&](std::vector<std::string> argv) -> bool{
@@ -153,14 +174,12 @@ void initBuildin(){
         if(argv.size() < 2)
             std::cerr << "Need more argument" << std::endl;
         else{
-            if(userManager.currentUser->username == "" )
-                userManager.broadcast("*** (no name) yelled ***: ");
-            else
-                userManager.broadcast("*** " + userManager.currentUser->username + " yelled ***: ");
-            userManager.broadcast(argv[1]);
+            std::string message = "";
+            message += "*** " + ( userManager.currentUser->username=="" ? "(no name)": userManager.currentUser->username) + " yelled ***: ";
+            message += argv[1];
             for(int i = 2 ; i < argv.size() ; i++)
-                userManager.broadcast( " " + argv[i]);
-            userManager.broadcast("\n");
+                message += " " + argv[i];
+            userManager.broadcast( message + "\n");
         }
         return true;
     };   
@@ -169,15 +188,16 @@ void initBuildin(){
             std::cerr << "Need more argument" << std::endl;
         else{
             int uid = stoi(argv[1]);
-            for(auto &user : userManager.users){
-                if(user.user_id == uid){
-                    dprintf(user.sockfd, "*** %s told you ***: ", userManager.currentUser->username==""? "(no name)": userManager.currentUser->username.c_str());
-                    dprintf(user.sockfd, "%s", argv[2].c_str());
-                    for(int i = 3 ; i < argv.size() ; i++ )
-                        dprintf(user.sockfd, " %s", argv[i].c_str());
-                    dprintf(user.sockfd, "\n");
-                    break;
-                }
+            user* dest = userManager.getUser(uid);
+            if(dest == 0 ){
+                userManager.broadcast("*** Error: user #" + argv[1] +" does not exist yet. ***\n");
+            }else{
+                std::string message = "";
+                message += "*** " + ( userManager.currentUser->username=="" ? "(no name)": userManager.currentUser->username) + " told you ***: ";
+                message += argv[2];
+                for(int i = 3 ; i < argv.size() ; i++ )
+                    message += " " + argv[i];
+                dprintf(dest->sockfd, "%s" , (message+"\n").c_str());
             }
         }
         return true;
@@ -186,6 +206,12 @@ void initBuildin(){
         if(argv.size() < 2)
             std::cerr << "Need more argument" << std::endl;
         else{
+            for(auto &user : userManager.users){
+                if(user.username == argv[1]){
+                    std::cout << "*** User '" + user.username +"' already exists. ***" << std::endl;
+                    return true;
+                }
+            }
             userManager.currentUser->username = argv[1];
             userManager.broadcast("*** User from " + userManager.currentUser->IP + ":" + std::to_string(userManager.currentUser->port) + " is named '"+ argv[1] +"'. ***\n");
         }

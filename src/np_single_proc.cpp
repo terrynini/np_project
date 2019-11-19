@@ -15,6 +15,7 @@ extern pid_t tailCommand;
 extern bool tailPipe;
 extern PipeManager* pipeManager;
 extern UserManager userManager;
+extern std::array<std::array<std::array<int,2>,30>,30> userPipe;
 
 int input ;
 int output;
@@ -35,6 +36,7 @@ inline void talk2local(){
 void serverBanner(){
     cout << "****************************************\n** Welcome to the information server. **\n****************************************" << endl;
 }
+
 void childHandler(int signo){
   while (waitpid(-1, NULL, WNOHANG) > 0);
 }
@@ -49,6 +51,9 @@ void init(){
     cin.tie(0);
     signal(SIGCHLD, childHandler);
     initBuildin();
+    for(int i = 0 ; i < 30 ; i++)
+        for(int j = 0 ; j < 30 ; j++)
+            userPipe[i][j].fill(-1);
     input = dup(0);
     output = dup(1);
     error = dup(2);
@@ -63,6 +68,14 @@ bool spawnShell(){
     if(getline(cin, cmdline)){
         tokens = CmdSplit(cmdline);
         cmds = CmdParse(tokens);
+        //
+        /* for(auto &cmd : cmds){
+            std::cout << "-- ";
+            for(auto &arg : cmd->argv)
+                cout << arg << " ";
+            cout << "flow:" << cmd->flow << "userin:" << cmd->userp_in << "userout:" << cmd->userp_out << " --\n";
+        } */
+        //
         if( evalCommand(cmds) == -1){
             return false;
         }
@@ -105,7 +118,11 @@ int main(int argc, char** argv){
                         if(client_fd > 0){
                             talk2sock(client_fd);
                             serverBanner();
-                            userManager.addUser(client_fd, &clientInfo);
+                            if(userManager.addUser(client_fd, &clientInfo) < 0){
+                                talk2local();
+                                close(client_fd);
+                                continue;    
+                            }
                             std::cout << "% " << flush;
                             talk2local();
                             FD_SET(client_fd, &activatefds);

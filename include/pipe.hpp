@@ -27,4 +27,6 @@ public:
     int counter;
     std::vector<Pipe*> pipes;
 };
+
+void clearUserpipe(Cmd* cmd);
 #endif
