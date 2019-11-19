@@ -70,11 +70,13 @@ std::vector<Cmd*> CmdParse(std::vector<std::string> tokens){
 void execute(Cmd* cmd){
     std::array<int,2> pair;
     pipeManager->getIO(cmd, pair);
-    if(pair[0] == -1){
-        std::cout << "*** Error: user #" + cmd->userp_in.substr(1) + " does not exist yet. ***" << std::endl;
+    if(pair[0] < 0){
+        if(pair[0] == -1)
+            std::cout << "*** Error: user #" + cmd->userp_in.substr(1) + " does not exist yet. ***" << std::endl;
         return;
-    }else if(pair[1] == -1){
-        std::cout << "*** Error: user #" + cmd->userp_out.substr(1) + " does not exist yet. ***" << std::endl;
+    }else if(pair[1] < 0){
+        if(pair[1] == -1)
+            std::cout << "*** Error: user #" + cmd->userp_out.substr(1) + " does not exist yet. ***" << std::endl;
         return; 
     }
 
@@ -86,7 +88,7 @@ void execute(Cmd* cmd){
     
     if(pid != 0){
         pipeManager->prune();
-        clearUserpipe(cmd);
+        clearUserpipe(cmd, false);
         if( cmd->flow.size() && (cmd->flow[0] == '|' || cmd->flow[0] == '!'))
             tailPipe = true;
         else
@@ -100,6 +102,7 @@ void execute(Cmd* cmd){
         if(cmd->flow[0] == '!'){
             dup2(pair[1],2);  
         }
+        clearUserpipe(cmd, true);
         pipeManager->prune();
         if(cmd->Exec() == -1){
             std::cerr << "Unknown command: [" << cmd->argv[0] << "]." << std::endl;

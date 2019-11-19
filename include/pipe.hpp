@@ -28,5 +28,5 @@ public:
     std::vector<Pipe*> pipes;
 };
 
-void clearUserpipe(Cmd* cmd);
+void clearUserpipe(Cmd*,bool);
 #endif
