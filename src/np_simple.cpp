@@ -28,7 +28,6 @@ void init(){
     initBuildin();
 }
 
-
 void spawnShell(){
     clearenv();
     setenv("PATH","bin:.",1);
@@ -42,6 +41,7 @@ void spawnShell(){
         cmds = CmdParse(tokens);
         if( evalCommand(cmds) == -1){
             delete pipeManager;
+            waitTail();
             return ;
         }
         waitTail();
@@ -74,6 +74,5 @@ int main(int argc, char** argv){
         dup2(output, 1);
         dup2(error, 2);
     }
-
     return 0;
 }
