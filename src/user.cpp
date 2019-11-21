@@ -54,7 +54,7 @@ int UserManager::addUser(int sockfd, sockaddr_in * client_info = nullptr ){
         count ++;
         iter ++ ;
     }    
-    this->users.push_back(newUser);
+    this->users.insert(iter,newUser);
     this->broadcast("*** User '(no name)' entered from " + newUser.IP + ":" + std::to_string(newUser.port) + ". ***\n");
     return newUser.user_id;
 }
