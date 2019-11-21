@@ -209,7 +209,7 @@ void server2Buildin(){
                 }
             }
             userManager->currentUser->username = cmdstr.substr(argv[0].size()+1);
-            userManager->broadcast("*** User from " + userManager->currentUser->IP + ":" + std::to_string(userManager->currentUser->port) + " is named '"+ cmdstr.substr(argv[0].size()+2) +"'. ***\n");
+            userManager->broadcast("*** User from " + userManager->currentUser->IP + ":" + std::to_string(userManager->currentUser->port) + " is named '"+ cmdstr.substr(argv[0].size()+1) +"'. ***\n");
         }
         return true;
     };
