@@ -14,7 +14,7 @@ using namespace std;
 extern pid_t tailCommand;
 extern bool tailPipe;
 extern PipeManager* pipeManager;
-extern UserManager userManager;
+extern UserManager* userManager;
 extern std::array<std::array<std::array<int,2>,30>,30> userPipe;
 
 int input ;
@@ -54,6 +54,7 @@ void init(){
     for(int i = 0 ; i < 30 ; i++)
         for(int j = 0 ; j < 30 ; j++)
             userPipe[i][j].fill(-1);
+    userManager = new UserManager();
     input = dup(0);
     output = dup(1);
     error = dup(2);
@@ -118,7 +119,7 @@ int main(int argc, char** argv){
                         if(client_fd > 0){
                             talk2sock(client_fd);
                             serverBanner();
-                            if(userManager.addUser(client_fd, &clientInfo) < 0){
+                            if(userManager->addUser(client_fd, &clientInfo) < 0){
                                 talk2local();
                                 close(client_fd);
                                 continue;    
@@ -130,18 +131,18 @@ int main(int argc, char** argv){
                         }
                     }else{
                         talk2sock(trav_fd);
-                        userManager.switchUser(trav_fd);
-                        userManager.currentUser->applyEnv();
-                        pipeManager = userManager.currentUser->pipeManager;
+                        userManager->switchUser(trav_fd);
+                        userManager->currentUser->applyEnv();
+                        pipeManager = userManager->currentUser->pipeManager;
                         if(!spawnShell()){
-                            userManager.deleteUser(trav_fd);
+                            userManager->deleteUser(trav_fd);
                             close(trav_fd);
                             FD_CLR(trav_fd, &activatefds);
                         }else{
-                            userManager.currentUser->saveEnv();
+                            userManager->currentUser->saveEnv();
                         }
                         pipeManager = nullptr;
-                        userManager.currentUser = nullptr;
+                        userManager->currentUser = nullptr;
                         talk2local();
                     }
                 }

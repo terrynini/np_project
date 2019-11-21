@@ -9,7 +9,7 @@
 #include <functional>
 
 extern PipeManager* pipeManager;
-extern UserManager userManager;
+extern UserManager* userManager;
 extern pid_t tailCommand;
 extern std::array<std::array<std::array<int,2>,30>,30> userPipe;
 extern bool tailPipe;
@@ -136,6 +136,76 @@ int Cmd::Exec(){
     return execvp(args[0], args.data());
 }
 
+void server2Buildin(){
+    Buildin["exit"] = [&](std::vector<std::string> argv) -> bool{
+        if(userManager)
+            userManager->broadcast("*** User '"+ ( userManager->currentUser->username=="" ? "(no name)": userManager->currentUser->username) +"' left. ***\n");
+        return false;
+    };   
+    Buildin["who"] = [&](std::vector<std::string> argv) -> bool{
+        std::cout << "<ID>\t<nickname>\t<IP:port>\t<indicate me>" << std::endl;
+        for(auto &user : userManager->users){
+            std::cout << user.user_id << "\t";
+            if( user.username == "")
+                std::cout << "(no name)\t";
+            else
+                std::cout << user.username << "\t";
+            std::cout << user.IP << ":" << user.port << "\t";
+            if( user.user_id == userManager->currentUser->user_id )
+                std::cout << "<-me";
+            std::cout << std::endl;
+        }
+        return true;
+    };   
+    Buildin["yell"] = [&](std::vector<std::string> argv) -> bool{
+        if(argv.size() < 2)
+            std::cerr << "Need more argument" << std::endl;
+        else{
+            std::string message = "";
+            message += "*** " + ( userManager->currentUser->username=="" ? "(no name)": userManager->currentUser->username) + " yelled ***: ";
+            message += argv[1];
+            for(int i = 2 ; i < argv.size() ; i++)
+                message += " " + argv[i];
+            userManager->broadcast( message + "\n");
+        }
+        return true;
+    };   
+    Buildin["tell"] = [&](std::vector<std::string> argv) -> bool{
+        if(argv.size() < 3)
+            std::cerr << "Need more argument" << std::endl;
+        else{
+            int uid = stoi(argv[1]);
+            user* dest = userManager->getUser(uid);
+            if(dest == 0 ){
+                userManager->broadcast("*** Error: user #" + argv[1] +" does not exist yet. ***\n");
+            }else{
+                std::string message = "";
+                message += "*** " + ( userManager->currentUser->username=="" ? "(no name)": userManager->currentUser->username) + " told you ***: ";
+                message += argv[2];
+                for(int i = 3 ; i < argv.size() ; i++ )
+                    message += " " + argv[i];
+                dprintf(dest->sockfd, "%s" , (message+"\n").c_str());
+            }
+        }
+        return true;
+    };   
+    Buildin["name"] = [&](std::vector<std::string> argv) -> bool{
+        if(argv.size() < 2)
+            std::cerr << "Need more argument" << std::endl;
+        else{
+            for(auto &user : userManager->users){
+                if(user.username == argv[1]){
+                    std::cout << "*** User '" + user.username +"' already exists. ***" << std::endl;
+                    return true;
+                }
+            }
+            userManager->currentUser->username = argv[1];
+            userManager->broadcast("*** User from " + userManager->currentUser->IP + ":" + std::to_string(userManager->currentUser->port) + " is named '"+ argv[1] +"'. ***\n");
+        }
+        return true;
+    };
+}
+
 void initBuildin(){
     Buildin["setenv"] = [](std::vector<std::string> argv) -> bool{
         if(argv.size() < 3)
@@ -154,72 +224,17 @@ void initBuildin(){
         }
         return true;
     };
-    Buildin["exit"] = [&](std::vector<std::string> argv) -> bool{
-        userManager.broadcast("*** User '"+ ( userManager.currentUser->username=="" ? "(no name)": userManager.currentUser->username) +"' left. ***\n");
+
+    if(userManager){
+        server2Buildin();
+    }else{
+        //server1
+        Buildin["exit"] = [&](std::vector<std::string> argv) -> bool{
+        if(userManager)
+            userManager->broadcast("*** User '"+ ( userManager->currentUser->username=="" ? "(no name)": userManager->currentUser->username) +"' left. ***\n");
         return false;
     };   
-    Buildin["who"] = [&](std::vector<std::string> argv) -> bool{
-        std::cout << "<ID>\t<nickname>\t<IP:port>\t<indicate me>" << std::endl;
-        for(auto &user : userManager.users){
-            std::cout << user.user_id << "\t";
-            if( user.username == "")
-                std::cout << "(no name)\t";
-            else
-                std::cout << user.username << "\t";
-            std::cout << user.IP << ":" << user.port << "\t";
-            if( user.user_id == userManager.currentUser->user_id )
-                std::cout << "<-me";
-            std::cout << std::endl;
-        }
-        return true;
-    };   
-    Buildin["yell"] = [&](std::vector<std::string> argv) -> bool{
-        if(argv.size() < 2)
-            std::cerr << "Need more argument" << std::endl;
-        else{
-            std::string message = "";
-            message += "*** " + ( userManager.currentUser->username=="" ? "(no name)": userManager.currentUser->username) + " yelled ***: ";
-            message += argv[1];
-            for(int i = 2 ; i < argv.size() ; i++)
-                message += " " + argv[i];
-            userManager.broadcast( message + "\n");
-        }
-        return true;
-    };   
-    Buildin["tell"] = [&](std::vector<std::string> argv) -> bool{
-        if(argv.size() < 3)
-            std::cerr << "Need more argument" << std::endl;
-        else{
-            int uid = stoi(argv[1]);
-            user* dest = userManager.getUser(uid);
-            if(dest == 0 ){
-                userManager.broadcast("*** Error: user #" + argv[1] +" does not exist yet. ***\n");
-            }else{
-                std::string message = "";
-                message += "*** " + ( userManager.currentUser->username=="" ? "(no name)": userManager.currentUser->username) + " told you ***: ";
-                message += argv[2];
-                for(int i = 3 ; i < argv.size() ; i++ )
-                    message += " " + argv[i];
-                dprintf(dest->sockfd, "%s" , (message+"\n").c_str());
-            }
-        }
-        return true;
-    };   
-    Buildin["name"] = [&](std::vector<std::string> argv) -> bool{
-        if(argv.size() < 2)
-            std::cerr << "Need more argument" << std::endl;
-        else{
-            for(auto &user : userManager.users){
-                if(user.username == argv[1]){
-                    std::cout << "*** User '" + user.username +"' already exists. ***" << std::endl;
-                    return true;
-                }
-            }
-            userManager.currentUser->username = argv[1];
-            userManager.broadcast("*** User from " + userManager.currentUser->IP + ":" + std::to_string(userManager.currentUser->port) + " is named '"+ argv[1] +"'. ***\n");
-        }
-        return true;
-    };
+    }
 }
 
 int runBuildin(Cmd* cmd){

@@ -1,7 +1,7 @@
 #include "user.hpp"
 
 extern char ** environ;
-UserManager userManager;
+UserManager* userManager;
 
 user* UserManager::getUser(int user_id){
     for(auto &user : this->users){
