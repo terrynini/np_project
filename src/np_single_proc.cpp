@@ -50,11 +50,11 @@ void init(){
     ios_base::sync_with_stdio(false);
     cin.tie(0);
     signal(SIGCHLD, childHandler);
+    userManager = new UserManager();
     initBuildin();
     for(int i = 0 ; i < 30 ; i++)
         for(int j = 0 ; j < 30 ; j++)
             userPipe[i][j].fill(-1);
-    userManager = new UserManager();
     input = dup(0);
     output = dup(1);
     error = dup(2);

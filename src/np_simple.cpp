@@ -4,6 +4,7 @@
 #include "cmd.hpp"
 #include "pipe.hpp"
 #include "sock.hpp"
+#include "user.hpp"
 #include <sys/wait.h>
 #include <cstdlib>
 
@@ -11,6 +12,7 @@ using namespace std;
 extern pid_t tailCommand;
 extern bool tailPipe;
 extern PipeManager* pipeManager;
+extern UserManager* userManager;
 
 void childHandler(int signo){
   while (waitpid(-1, NULL, WNOHANG) > 0);
@@ -26,6 +28,7 @@ void init(){
     cin.tie(0);
     signal(SIGCHLD, childHandler);
     initBuildin();
+    userManager = 0;
 }
 
 void spawnShell(){
