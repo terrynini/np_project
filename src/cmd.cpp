@@ -72,6 +72,8 @@ std::vector<Cmd*> CmdParse(std::vector<std::string> tokens){
         for(int i = 1 ; i < cmds.size() ; i++)
             cmds.pop_back();
     }
+    for(int i = 0 ; i < cmds.size() ; i++)
+        cmds[i]->cmdStr = cmds[i]->cmdStr.substr(1);
     return cmds;
 }
 
@@ -171,7 +173,7 @@ void server2Buildin(){
         else{
             std::string message = "";
             message += "*** " + ( userManager->currentUser->username=="" ? "(no name)": userManager->currentUser->username) + " yelled ***: ";
-            message += cmdstr.substr(argv[0].size()+1);
+            message += cmdstr.substr(argv[0].size());
             userManager->broadcast( message + "\n");
         }
         return true;
@@ -183,11 +185,11 @@ void server2Buildin(){
             int uid = stoi(argv[1]);
             user* dest = userManager->getUser(uid);
             if(dest == 0 ){
-                std::cout << "*** Error: user #" + argv[1] +" does not exist yet. ***\n";
+                std::cout << "*** Error: user #" + argv[1] +" does not exist yet. ***" << std::endl;
             }else{
                 std::string message = "";
                 message += "*** " + ( userManager->currentUser->username=="" ? "(no name)": userManager->currentUser->username) + " told you ***: ";
-                message += cmdstr.substr((argv[0]+" "+argv[1]).size()+2);
+                message += cmdstr.substr((argv[0]+" "+argv[1]).size()+1);
                 /* message += argv[2];
                 for(int i = 3 ; i < argv.size() ; i++ )
                     message += " " + argv[i]; */
@@ -201,12 +203,12 @@ void server2Buildin(){
             std::cerr << "Need more argument" << std::endl;
         else{
             for(auto &user : userManager->users){
-                if(user.username == cmdstr.substr(argv[0].size()+2)){
+                if(user.username == cmdstr.substr(argv[0].size()+1)){
                     std::cout << "*** User '" + user.username +"' already exists. ***" << std::endl;
                     return true;
                 }
             }
-            userManager->currentUser->username = cmdstr.substr(argv[0].size()+2);
+            userManager->currentUser->username = cmdstr.substr(argv[0].size()+1);
             userManager->broadcast("*** User from " + userManager->currentUser->IP + ":" + std::to_string(userManager->currentUser->port) + " is named '"+ cmdstr.substr(argv[0].size()+2) +"'. ***\n");
         }
         return true;
