@@ -7,11 +7,11 @@
 #include <algorithm>
 #include <iterator>
 #include <functional>
-
+#define USERMAX 30
 extern PipeManager* pipeManager;
 extern UserManager* userManager;
 extern pid_t tailCommand;
-extern std::array<std::array<std::array<int,2>,30>,30> userPipe;
+extern std::array<std::array<std::array<int,2>,USERMAX>,USERMAX> userPipe;
 extern bool tailPipe;
 
 std::map<std::string,std::function<bool (std::vector<std::string>,std::string)>> Buildin;
@@ -23,7 +23,7 @@ std::vector<std::string> CmdSplit(std::string cmdline){
     return tokens;
 }
 
-std::vector<Cmd*> CmdParse(std::vector<std::string> tokens){
+std::vector<Cmd*> CmdParse(std::vector<std::string> tokens, std::string cmdline){
     std::vector<Cmd*> cmds;
     cmds.push_back(new Cmd());
     Cmd* work = cmds.back();
@@ -48,13 +48,13 @@ std::vector<Cmd*> CmdParse(std::vector<std::string> tokens){
                 redirect = true;
                 work->flow = token;//">";
                 work->cmdStr += " " + token;
-            }else{
+            }else if(userManager){
                 if( token[0] == '>'){
                     work->userp_out = token;        
-                    work->cmdStr += " " + token;
+                    work->cmdStr = cmdline; //+= " " + token;
                 }else{
                     work->userp_in = token;
-                    work->cmdStr += " " + token;
+                    work->cmdStr = cmdline;//+= " " + token;
                 }
             }
         }else{
@@ -148,8 +148,25 @@ int Cmd::Exec(){
 
 void server2Buildin(){
     Buildin["exit"] = [&](std::vector<std::string> argv, std::string cmdstr) -> bool{
-        if(userManager)
-            userManager->broadcast("*** User '"+ ( userManager->currentUser->username=="" ? "(no name)": userManager->currentUser->username) +"' left. ***\n");
+        for(int i = 0 ; i < USERMAX ; i++){
+            if(userPipe[i][userManager->currentUser->user_id][0] != -1){
+                close(userPipe[i][userManager->currentUser->user_id][0]);
+                userPipe[i][userManager->currentUser->user_id][0] = -1;
+            }
+            if(userPipe[i][userManager->currentUser->user_id][1] != -1){
+                close(userPipe[i][userManager->currentUser->user_id][1]);
+                userPipe[i][userManager->currentUser->user_id][1] = -1;
+            }
+            if(userPipe[userManager->currentUser->user_id][i][0] != -1){
+                close(userPipe[userManager->currentUser->user_id][i][0]);
+                userPipe[userManager->currentUser->user_id][i][0] = -1;
+            }
+            if(userPipe[userManager->currentUser->user_id][i][0] != -1){
+                close(userPipe[userManager->currentUser->user_id][i][0]);
+                userPipe[userManager->currentUser->user_id][i][0] = -1;
+            }
+        }
+        userManager->broadcast("*** User '"+ ( userManager->currentUser->username=="" ? "(no name)": userManager->currentUser->username) +"' left. ***\n"); 
         return false;
     };   
     Buildin["who"] = [&](std::vector<std::string> argv, std::string cmdstr) -> bool{
@@ -239,8 +256,6 @@ void initBuildin(){
     }else{
         //server1
         Buildin["exit"] = [&](std::vector<std::string> argv, std::string cmdstr) -> bool{
-        if(userManager)
-            userManager->broadcast("*** User '"+ ( userManager->currentUser->username=="" ? "(no name)": userManager->currentUser->username) +"' left. ***\n");
         return false;
     };   
     }

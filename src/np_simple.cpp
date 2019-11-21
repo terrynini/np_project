@@ -41,7 +41,7 @@ void spawnShell(){
     cin.clear();
     while(std::cout << "% " << flush && getline(cin, cmdline)){
         tokens = CmdSplit(cmdline);
-        cmds = CmdParse(tokens);
+        cmds = CmdParse(tokens, cmdline);
         if( evalCommand(cmds) == -1){
             delete pipeManager;
             waitTail();

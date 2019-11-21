@@ -121,7 +121,7 @@ void spawnShell(){
     serverBanner();
     while(std::cout << "% " << flush && getline(cin, cmdline)){
         tokens = CmdSplit(cmdline);
-        cmds = CmdParse(tokens);
+        cmds = CmdParse(tokens, cmdline);
         if( evalCommand(cmds) == -1){
             cout << "shell close" << endl;
             delete pipeManager;

@@ -31,6 +31,6 @@ int runBuildin(Cmd*);
 void execute(Cmd*);
 int evalCommand(std::vector<Cmd*>);
 std::vector<std::string> CmdSplit(std::string);
-std::vector<Cmd*> CmdParse(std::vector<std::string>);
+std::vector<Cmd*> CmdParse(std::vector<std::string>,std::string);
 
 #endif

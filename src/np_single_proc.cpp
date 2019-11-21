@@ -68,7 +68,7 @@ bool spawnShell(){
     cin.clear();
     if(getline(cin, cmdline)){
         tokens = CmdSplit(cmdline);
-        cmds = CmdParse(tokens);
+        cmds = CmdParse(tokens, cmdline);
         if( evalCommand(cmds) == -1){
             return false;
         }
