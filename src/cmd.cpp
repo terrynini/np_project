@@ -51,10 +51,10 @@ std::vector<Cmd*> CmdParse(std::vector<std::string> tokens, std::string cmdline)
             }else if(userManager){
                 if( token[0] == '>'){
                     work->userp_out = token;        
-                    work->cmdStr = cmdline; //+= " " + token;
+                    work->cmdStr  += " " + token;
                 }else{
                     work->userp_in = token;
-                    work->cmdStr = cmdline;//+= " " + token;
+                    work->cmdStr += " " + token;
                 }
             }
         }else{
@@ -72,8 +72,13 @@ std::vector<Cmd*> CmdParse(std::vector<std::string> tokens, std::string cmdline)
         for(int i = 1 ; i < cmds.size() ; i++)
             cmds.pop_back();
     }
-    for(int i = 0 ; i < cmds.size() ; i++)
-        cmds[i]->cmdStr = cmds[i]->cmdStr.substr(1);
+    for(int i = 0 ; i < cmds.size() ; i++){
+        if(cmds[i]->userp_in != "" || cmds[i]->userp_out != "")
+            cmds[i]->cmdStr = cmdline;
+        else
+            cmds[i]->cmdStr = cmds[i]->cmdStr.substr(1);
+        
+    }
     return cmds;
 }
 
