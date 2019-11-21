@@ -14,7 +14,7 @@ extern pid_t tailCommand;
 extern std::array<std::array<std::array<int,2>,30>,30> userPipe;
 extern bool tailPipe;
 
-std::map<std::string,std::function<bool (std::vector<std::string>)>> Buildin;
+std::map<std::string,std::function<bool (std::vector<std::string>,std::string)>> Buildin;
 
 std::vector<std::string> CmdSplit(std::string cmdline){ 
     std::istringstream css(cmdline);
@@ -28,7 +28,7 @@ std::vector<Cmd*> CmdParse(std::vector<std::string> tokens){
     cmds.push_back(new Cmd());
     Cmd* work = cmds.back();
     bool redirect = false;
-
+    
     for (auto &token : tokens){
         if (redirect){
             work->flow += token;
@@ -46,8 +46,8 @@ std::vector<Cmd*> CmdParse(std::vector<std::string> tokens){
         else if( token[0] == '>' || token[0] == '<'){
             if( token.size() == 1){
                 redirect = true;
-                work->flow = token[0];//">";
-                work->cmdStr += " " + token[0];
+                work->flow = token;//">";
+                work->cmdStr += " " + token;
             }else{
                 if( token[0] == '>'){
                     work->userp_out = token;        
@@ -64,6 +64,14 @@ std::vector<Cmd*> CmdParse(std::vector<std::string> tokens){
     }
     if(work->argv.size() == 0)
         cmds.pop_back();
+    //buildin exception
+    auto func = Buildin.find(tokens[0]);
+    if( func != Buildin.end()){
+        for( int i = 1 ; i < cmds.size() ; i++)
+            cmds[0]->cmdStr += cmds[i]->cmdStr;
+        for(int i = 1 ; i < cmds.size() ; i++)
+            cmds.pop_back();
+    }
     return cmds;
 }
 
@@ -137,12 +145,12 @@ int Cmd::Exec(){
 }
 
 void server2Buildin(){
-    Buildin["exit"] = [&](std::vector<std::string> argv) -> bool{
+    Buildin["exit"] = [&](std::vector<std::string> argv, std::string cmdstr) -> bool{
         if(userManager)
             userManager->broadcast("*** User '"+ ( userManager->currentUser->username=="" ? "(no name)": userManager->currentUser->username) +"' left. ***\n");
         return false;
     };   
-    Buildin["who"] = [&](std::vector<std::string> argv) -> bool{
+    Buildin["who"] = [&](std::vector<std::string> argv, std::string cmdstr) -> bool{
         std::cout << "<ID>\t<nickname>\t<IP:port>\t<indicate me>" << std::endl;
         for(auto &user : userManager->users){
             std::cout << user.user_id << "\t";
@@ -157,20 +165,18 @@ void server2Buildin(){
         }
         return true;
     };   
-    Buildin["yell"] = [&](std::vector<std::string> argv) -> bool{
+    Buildin["yell"] = [&](std::vector<std::string> argv, std::string cmdstr) -> bool{
         if(argv.size() < 2)
             std::cerr << "Need more argument" << std::endl;
         else{
             std::string message = "";
             message += "*** " + ( userManager->currentUser->username=="" ? "(no name)": userManager->currentUser->username) + " yelled ***: ";
-            message += argv[1];
-            for(int i = 2 ; i < argv.size() ; i++)
-                message += " " + argv[i];
+            message += cmdstr;
             userManager->broadcast( message + "\n");
         }
         return true;
     };   
-    Buildin["tell"] = [&](std::vector<std::string> argv) -> bool{
+    Buildin["tell"] = [&](std::vector<std::string> argv, std::string cmdstr) -> bool{
         if(argv.size() < 3)
             std::cerr << "Need more argument" << std::endl;
         else{
@@ -181,40 +187,41 @@ void server2Buildin(){
             }else{
                 std::string message = "";
                 message += "*** " + ( userManager->currentUser->username=="" ? "(no name)": userManager->currentUser->username) + " told you ***: ";
-                message += argv[2];
+                message += cmdstr.substr((argv[0]+" "+argv[1]).size()+2);
+                /* message += argv[2];
                 for(int i = 3 ; i < argv.size() ; i++ )
-                    message += " " + argv[i];
+                    message += " " + argv[i]; */
                 dprintf(dest->sockfd, "%s" , (message+"\n").c_str());
             }
         }
         return true;
     };   
-    Buildin["name"] = [&](std::vector<std::string> argv) -> bool{
+    Buildin["name"] = [&](std::vector<std::string> argv, std::string cmdstr) -> bool{
         if(argv.size() < 2)
             std::cerr << "Need more argument" << std::endl;
         else{
             for(auto &user : userManager->users){
-                if(user.username == argv[1]){
+                if(user.username == cmdstr.substr(argv[0].size()+2)){
                     std::cout << "*** User '" + user.username +"' already exists. ***" << std::endl;
                     return true;
                 }
             }
-            userManager->currentUser->username = argv[1];
-            userManager->broadcast("*** User from " + userManager->currentUser->IP + ":" + std::to_string(userManager->currentUser->port) + " is named '"+ argv[1] +"'. ***\n");
+            userManager->currentUser->username = cmdstr.substr(argv[0].size()+2);
+            userManager->broadcast("*** User from " + userManager->currentUser->IP + ":" + std::to_string(userManager->currentUser->port) + " is named '"+ cmdstr.substr(argv[0].size()+2) +"'. ***\n");
         }
         return true;
     };
 }
 
 void initBuildin(){
-    Buildin["setenv"] = [](std::vector<std::string> argv) -> bool{
+    Buildin["setenv"] = [](std::vector<std::string> argv, std::string cmdstr) -> bool{
         if(argv.size() < 3)
             std::cerr << "Need more arguments" << std::endl;
         else
             setenv(argv[1].c_str(),argv[2].c_str(),1);
         return true;
     };
-    Buildin["printenv"] = [](std::vector<std::string> argv) -> bool{
+    Buildin["printenv"] = [](std::vector<std::string> argv, std::string cmdstr) -> bool{
         if(argv.size() < 2)
             std::cerr << "Need more argument" << std::endl;
         else{
@@ -229,7 +236,7 @@ void initBuildin(){
         server2Buildin();
     }else{
         //server1
-        Buildin["exit"] = [&](std::vector<std::string> argv) -> bool{
+        Buildin["exit"] = [&](std::vector<std::string> argv, std::string cmdstr) -> bool{
         if(userManager)
             userManager->broadcast("*** User '"+ ( userManager->currentUser->username=="" ? "(no name)": userManager->currentUser->username) +"' left. ***\n");
         return false;
@@ -240,7 +247,7 @@ void initBuildin(){
 int runBuildin(Cmd* cmd){
     auto func = Buildin.find(cmd->argv[0]);
     if( func != Buildin.end()){
-        if((func->second)(cmd->argv))
+        if((func->second)(cmd->argv, cmd->cmdStr))
             return 1;
         else
             return -1;

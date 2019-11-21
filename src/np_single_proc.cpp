@@ -69,14 +69,6 @@ bool spawnShell(){
     if(getline(cin, cmdline)){
         tokens = CmdSplit(cmdline);
         cmds = CmdParse(tokens);
-        //
-        /* for(auto &cmd : cmds){
-            std::cout << "-- ";
-            for(auto &arg : cmd->argv)
-                cout << arg << " ";
-            cout << "flow:" << cmd->flow << "userin:" << cmd->userp_in << "userout:" << cmd->userp_out << " --\n";
-        } */
-        //
         if( evalCommand(cmds) == -1){
             return false;
         }
