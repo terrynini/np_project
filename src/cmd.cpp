@@ -153,24 +153,6 @@ int Cmd::Exec(){
 
 void server2Buildin(){
     Buildin["exit"] = [&](std::vector<std::string> argv, std::string cmdstr) -> bool{
-        for(int i = 0 ; i < USERMAX ; i++){
-            if(userPipe[i][userManager->currentUser->user_id][0] != -1){
-                close(userPipe[i][userManager->currentUser->user_id][0]);
-                userPipe[i][userManager->currentUser->user_id][0] = -1;
-            }
-            if(userPipe[i][userManager->currentUser->user_id][1] != -1){
-                close(userPipe[i][userManager->currentUser->user_id][1]);
-                userPipe[i][userManager->currentUser->user_id][1] = -1;
-            }
-            if(userPipe[userManager->currentUser->user_id][i][0] != -1){
-                close(userPipe[userManager->currentUser->user_id][i][0]);
-                userPipe[userManager->currentUser->user_id][i][0] = -1;
-            }
-            if(userPipe[userManager->currentUser->user_id][i][0] != -1){
-                close(userPipe[userManager->currentUser->user_id][i][0]);
-                userPipe[userManager->currentUser->user_id][i][0] = -1;
-            }
-        }
         userManager->broadcast("*** User '"+ ( userManager->currentUser->username=="" ? "(no name)": userManager->currentUser->username) +"' left. ***\n"); 
         return false;
     };   

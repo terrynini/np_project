@@ -1,7 +1,10 @@
 #include "user.hpp"
+#include "pipe.hpp"
+#define USERMAX 30
 
 extern char ** environ;
 UserManager* userManager;
+extern std::array<std::array<std::array<int,2>,USERMAX>,USERMAX> userPipe;
 
 user* UserManager::getUser(int user_id){
     for(auto &user : this->users){
@@ -27,6 +30,24 @@ void UserManager::broadcast(std::string message){
 }
 
 void UserManager::deleteUser(int sockfd){
+    for(int i = 0 ; i < USERMAX ; i++){
+            if(userPipe[i][userManager->currentUser->user_id][0] != -1){
+                close(userPipe[i][userManager->currentUser->user_id][0]);
+                userPipe[i][userManager->currentUser->user_id][0] = -1;
+            }
+            if(userPipe[i][userManager->currentUser->user_id][1] != -1){
+                close(userPipe[i][userManager->currentUser->user_id][1]);
+                userPipe[i][userManager->currentUser->user_id][1] = -1;
+            }
+            if(userPipe[userManager->currentUser->user_id][i][0] != -1){
+                close(userPipe[userManager->currentUser->user_id][i][0]);
+                userPipe[userManager->currentUser->user_id][i][0] = -1;
+            }
+            if(userPipe[userManager->currentUser->user_id][i][1] != -1){
+                close(userPipe[userManager->currentUser->user_id][i][1]);
+                userPipe[userManager->currentUser->user_id][i][1] = -1;
+            }
+        }
     for(auto iter=this->users.begin(); iter != this->users.end() ; iter++){
         if(iter->sockfd == sockfd){
             this->users.erase(iter);
