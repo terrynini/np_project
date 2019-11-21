@@ -183,7 +183,7 @@ void server2Buildin(){
             int uid = stoi(argv[1]);
             user* dest = userManager->getUser(uid);
             if(dest == 0 ){
-                userManager->broadcast("*** Error: user #" + argv[1] +" does not exist yet. ***\n");
+                std::cout << "*** Error: user #" + argv[1] +" does not exist yet. ***\n";
             }else{
                 std::string message = "";
                 message += "*** " + ( userManager->currentUser->username=="" ? "(no name)": userManager->currentUser->username) + " told you ***: ";
