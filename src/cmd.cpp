@@ -171,7 +171,7 @@ void server2Buildin(){
         else{
             std::string message = "";
             message += "*** " + ( userManager->currentUser->username=="" ? "(no name)": userManager->currentUser->username) + " yelled ***: ";
-            message += cmdstr;
+            message += cmdstr.substr(argv[0].size()+1);
             userManager->broadcast( message + "\n");
         }
         return true;
