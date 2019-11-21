@@ -8,14 +8,14 @@
 #include <sys/time.h>
 #include <cstdlib>
 #include "user.hpp"
-
+#define USERMAX 30
 using namespace std;
 
 extern pid_t tailCommand;
 extern bool tailPipe;
 extern PipeManager* pipeManager;
 extern UserManager* userManager;
-extern std::array<std::array<std::array<int,2>,30>,30> userPipe;
+extern std::array<std::array<std::array<int,2>,USERMAX+1>,USERMAX+1> userPipe;
 
 int input ;
 int output;
@@ -52,8 +52,8 @@ void init(){
     signal(SIGCHLD, childHandler);
     userManager = new UserManager();
     initBuildin();
-    for(int i = 0 ; i < 30 ; i++)
-        for(int j = 0 ; j < 30 ; j++)
+    for(int i = 0 ; i < USERMAX+1; i++)
+        for(int j = 0 ; j < USERMAX+1 ; j++)
             userPipe[i][j].fill(-1);
     input = dup(0);
     output = dup(1);

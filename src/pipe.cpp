@@ -8,7 +8,7 @@
 #include <string>
 
 extern UserManager* userManager;
-std::array<std::array<std::array<int,2>,30>,30> userPipe = {-1};
+std::array<std::array<std::array<int,2>,31>,31> userPipe = {-1};
 PipeManager* pipeManager;
 pid_t tailCommand;
 bool  tailPipe;

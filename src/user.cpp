@@ -4,7 +4,7 @@
 
 extern char ** environ;
 UserManager* userManager;
-extern std::array<std::array<std::array<int,2>,USERMAX>,USERMAX> userPipe;
+extern std::array<std::array<std::array<int,2>,USERMAX+1>,USERMAX+1> userPipe;
 
 user* UserManager::getUser(int user_id){
     for(auto &user : this->users){
@@ -30,7 +30,7 @@ void UserManager::broadcast(std::string message){
 }
 
 void UserManager::deleteUser(int sockfd){
-    for(int i = 0 ; i < USERMAX ; i++){
+    for(int i = 0 ; i < USERMAX+1 ; i++){
             if(userPipe[i][userManager->currentUser->user_id][0] != -1){
                 close(userPipe[i][userManager->currentUser->user_id][0]);
                 userPipe[i][userManager->currentUser->user_id][0] = -1;

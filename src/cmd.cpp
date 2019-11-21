@@ -11,7 +11,7 @@
 extern PipeManager* pipeManager;
 extern UserManager* userManager;
 extern pid_t tailCommand;
-extern std::array<std::array<std::array<int,2>,USERMAX>,USERMAX> userPipe;
+extern std::array<std::array<std::array<int,2>,USERMAX+1>,USERMAX+1> userPipe;
 extern bool tailPipe;
 
 std::map<std::string,std::function<bool (std::vector<std::string>,std::string)>> Buildin;
