@@ -33,7 +33,6 @@ void intHandler(int signo){
 }
 
 void clientHandler(int signo){
-    cout << "INNNNN" << flush;
     cout << shared->broadcastMessage << flush;
 }
 
