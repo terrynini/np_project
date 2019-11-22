@@ -202,6 +202,7 @@ void clearUserpipe(Cmd* cmd, bool all){
             if(shared->userPipe[id][currentUser->uid][0] != -1){
                 close(shared->userPipe[id][currentUser->uid][0]);
                 shared->userPipe[id][currentUser->uid][0] = -1;
+                shared->userPipe[id][currentUser->uid][1]  = -1;
             }
         }
 
@@ -209,7 +210,6 @@ void clearUserpipe(Cmd* cmd, bool all){
             id = std::stoi(cmd->userp_out.substr(1));
             if(shared->userPipe[currentUser->uid][id][1] != -1){
                 close(shared->userPipe[currentUser->uid][id][1]);
-                shared->userPipe[currentUser->uid][id][1]  = -1;
             }
         }
     }

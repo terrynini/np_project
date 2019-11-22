@@ -39,6 +39,12 @@ void clientHandler(int signo){
 }
 
 void fifoHandle(int signo){
+    if(shared->userPipe[shared->userPipeInfo][currentUser->uid][1] < -1){
+        shared->userPipe[shared->userPipeInfo][currentUser->uid][1] = -1;
+        close(shared->userPipe[shared->userPipeInfo][currentUser->uid][0]);
+        shared->userPipe[shared->userPipeInfo][currentUser->uid][0] = -1;
+        return;
+    }
     if(shared->userPipe[shared->userPipeInfo][currentUser->uid][0] != -1){
         close(shared->userPipe[shared->userPipeInfo][currentUser->uid][0]);
         shared->userPipe[shared->userPipeInfo][currentUser->uid][0] = -1;
@@ -64,6 +70,17 @@ void registerUser(int pid, sockaddr_in* client){
 void logout(){
     std::string name = ( currentUser->user_name[0] == 0 ? "(no name)": currentUser->user_name);
     //TODO: clear fifo
+    for(int i = 0 ; i < USERMAX+1 ; i++){
+        if(shared->userPipe[i][currentUser->uid][0] != -1){
+            close(shared->userPipe[i][currentUser->uid][0]);
+            shared->userPipe[i][currentUser->uid][0] = -1;
+        }
+        if(shared->userPipe[currentUser->uid][i][1] != -1){
+            shared->userPipe[currentUser->uid][i][1] == -shared->userPipe[currentUser->uid][i][1];
+            shared->userPipeInfo = currentUser->uid;
+            kill(shared->userTable[i].pid,SIGUSR2);
+        }
+    }
     broadcast("*** User '"+ name +"' left. ***\n");
     bzero(currentUser, sizeof(struct userInfo));
 }
