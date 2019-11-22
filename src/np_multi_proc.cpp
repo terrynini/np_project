@@ -76,7 +76,7 @@ void logout(){
             shared->userPipe[i][currentUser->uid][0] = -1;
         }
         if(shared->userPipe[currentUser->uid][i][1] != -1){
-            shared->userPipe[currentUser->uid][i][1] == -shared->userPipe[currentUser->uid][i][1];
+            shared->userPipe[currentUser->uid][i][1] = -shared->userPipe[currentUser->uid][i][1];
             shared->userPipeInfo = currentUser->uid;
             kill(shared->userTable[i].pid,SIGUSR2);
         }
