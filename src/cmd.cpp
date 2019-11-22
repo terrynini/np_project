@@ -1,18 +1,25 @@
 #include "cmd.hpp"
 #include "pipe.hpp"
 #include "user.hpp"
+#include "shmdata.hpp"
 #include <sstream>
 #include <map>
 #include <unistd.h>
 #include <algorithm>
 #include <iterator>
 #include <functional>
+#include <cstring>
+#include <signal.h>
+#include <string>
 #define USERMAX 30
+
 extern PipeManager* pipeManager;
 extern UserManager* userManager;
+extern struct shared_st *shared;
 extern pid_t tailCommand;
 extern std::array<std::array<std::array<int,2>,USERMAX+1>,USERMAX+1> userPipe;
 extern bool tailPipe;
+userInfo* currentUser;
 
 std::map<std::string,std::function<bool (std::vector<std::string>,std::string)>> Buildin;
 
@@ -21,6 +28,16 @@ std::vector<std::string> CmdSplit(std::string cmdline){
     std::vector<std::string> tokens((std::istream_iterator<std::string>(css)),
                                     std::istream_iterator<std::string>());
     return tokens;
+}
+
+
+void broadcast(std::string message){
+    for(int i = 0; i < USERMAX+1 ; i++){
+        if(shared->userTable[i].pid > 0){
+            strcpy(shared->broadcastMessage, message.c_str());
+            kill(shared->userTable[i].pid, SIGUSR1);
+        }
+    }
 }
 
 std::vector<Cmd*> CmdParse(std::vector<std::string> tokens, std::string cmdline){
@@ -219,6 +236,79 @@ void server2Buildin(){
     };
 }
 
+void server3Buildin(){
+    Buildin["exit"] = [&](std::vector<std::string> argv, std::string cmdstr) -> bool{
+        return false;
+    };   
+    Buildin["who"] = [&](std::vector<std::string> argv, std::string cmdstr) -> bool{
+        std::cout << "<ID>\t<nickname>\t<IP:port>\t<indicate me>" << std::endl;
+        for(int i  = 0 ; i < USERMAX+1 ; i++){
+            if( shared->userTable[i].uid == 0)
+                continue;
+            std::cout << shared->userTable[i].uid << "\t";
+            if( !strcmp(shared->userTable[i].user_name, "") )
+                std::cout << "(no name)\t";
+            else
+                std::cout << shared->userTable[i].user_name << "\t";
+            std::cout << inet_ntoa(shared->userTable[i].sin_addr) << ":" << ntohs(shared->userTable[i].sin_port) << "\t";
+            if( shared->userTable[i].uid == currentUser->uid )
+                std::cout << "<-me";
+            std::cout << std::endl;
+        }
+        return true;
+    };   
+
+    Buildin["yell"] = [&](std::vector<std::string> argv, std::string cmdstr) -> bool{
+        if(argv.size() < 2)
+            std::cerr << "Need more argument" << std::endl;
+        else{
+            std::string message = "";
+            std::string name = (currentUser->user_name == "" ? "(no name)": currentUser->user_name) ;
+            message += "*** " + name + " yelled ***: ";
+            message += cmdstr.substr(argv[0].size());
+            broadcast( message + "\n");
+        }
+        return true;
+    };   
+    Buildin["tell"] = [&](std::vector<std::string> argv, std::string cmdstr) -> bool{
+        if(argv.size() < 3)
+            std::cerr << "Need more argument" << std::endl;
+        else{
+            int uid = stoi(argv[1]);
+            userInfo* dest = &shared->userTable[uid];
+            if(dest->pid == 0 ){
+                std::cout << "*** Error: user #" + argv[1] +" does not exist yet. ***" << std::endl;
+            }else{
+                std::string message = "";
+                std::string name = currentUser->user_name == "" ? "(no name)" : currentUser->user_name;
+                message += "*** " + name + " told you ***: ";
+                message += cmdstr.substr((argv[0]+" "+argv[1]).size()+1) + "\n";
+                strcpy(shared->broadcastMessage, message.c_str());
+                kill(dest->pid, SIGUSR1);
+            }
+        }
+        return true;
+    };   
+    Buildin["name"] = [&](std::vector<std::string> argv, std::string cmdstr) -> bool{
+        if(argv.size() < 2)
+            std::cerr << "Need more argument" << std::endl;
+        else{
+            for(auto &user : userManager->users){
+                if(user.username == cmdstr.substr(argv[0].size()+1)){
+                    std::cout << "*** User '" + user.username +"' already exists. ***" << std::endl;
+                    return true;
+                }
+            }
+            strcpy(currentUser->user_name, cmdstr.substr(argv[0].size()+1).c_str());
+            std::string message = "*** User from ";
+            message += inet_ntoa(currentUser->sin_addr);
+            message += ":" + std::to_string(ntohs(currentUser->sin_port)) + " is named '"+ cmdstr.substr(argv[0].size()+1) +"'. ***\n";
+            broadcast(message);
+        }
+        return true;
+    };
+}
+
 void initBuildin(){
     Buildin["setenv"] = [](std::vector<std::string> argv, std::string cmdstr) -> bool{
         if(argv.size() < 3)
@@ -240,11 +330,13 @@ void initBuildin(){
 
     if(userManager){
         server2Buildin();
+    }else if (shared){
+        server3Buildin();
     }else{
         //server1
         Buildin["exit"] = [&](std::vector<std::string> argv, std::string cmdstr) -> bool{
         return false;
-    };   
+        };   
     }
 }
 
@@ -258,3 +350,4 @@ int runBuildin(Cmd* cmd){
     }
     return 0;
 }
+

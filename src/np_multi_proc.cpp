@@ -16,9 +16,11 @@ using namespace std;
 extern pid_t tailCommand;
 extern bool tailPipe;
 extern PipeManager* pipeManager;
+extern void broadcast(std::string);
 pid_t c_pid;
 int shmid;
 struct shared_st *shared;
+extern userInfo* currentUser;
 
 void childHandler(int signo){
     while (waitpid(-1, NULL, WNOHANG) > 0);
@@ -31,38 +33,26 @@ void intHandler(int signo){
 }
 
 void clientHandler(int signo){
-    cout << shared->broadcastMessage << std::endl;
+    cout << shared->broadcastMessage << flush;
 }
 
 void registerUser(int pid, sockaddr_in* client){
     for(int i = 0 ; i < USERMAX ; i++){
         if(shared->userTable[i].pid == 0){
             shared->userTable[i].pid = pid;
-            shared->userTable[i].uid = i;
+            shared->userTable[i].uid = i+1;
             shared->userTable[i].sin_addr = client->sin_addr;
             shared->userTable[i].sin_port = client->sin_port;
+            currentUser = &shared->userTable[i];
             break;
         }
     }   
 }
 
-void broadcast(string message){
-    for(int i = 0; i < USERMAX ; i++){
-        if(shared->userTable[i].pid > 0){
-            strcpy(shared->broadcastMessage, message.c_str());
-            kill(shared->userTable[i].pid, SIGUSR1);
-        }
-    }
-}
-
 void logout(){
-    for(int i = 0 ; i < USERMAX ; i++){
-        if(shared->userTable[i].pid == c_pid){
-            string name = shared->userTable[i].user_name[0] == 0 ? "(no name)" : shared->userTable[i].user_name;
-            broadcast("*** User '"+ name +"' left. ***\n");
-            bzero(&shared->userTable[i], sizeof(struct userInfo));
-        }
-    }
+    std::string name = ( currentUser->user_name[0] == 0 ? "(no name)": currentUser->user_name);
+    broadcast("*** User '"+ name +"' left. ***\n");
+    bzero(currentUser, sizeof(struct userInfo));
 }
 
 void waitTail(){
@@ -76,7 +66,6 @@ void init(){
     signal(SIGCHLD, childHandler);
     signal(SIGINT, intHandler);
     signal(SIGUSR1, clientHandler);
-    initBuildin();
     shmid = shmget((key_t)5566, sizeof(struct shared_st), 0666|IPC_CREAT);
     if(shmid == -1){
         cerr << "shmid failed" << endl;
@@ -89,6 +78,7 @@ void init(){
         exit(0);
     }
     bzero(shared,sizeof(struct shared_st));
+    initBuildin();
 }
 
 void fini(){
@@ -111,6 +101,8 @@ void serverBanner(){
 
 void spawnShell(){
     clearenv();
+    ios_base::sync_with_stdio(false);
+    cin.tie(0);
     setenv("PATH","bin:.",1);
     pipeManager = new PipeManager(); 
     string cmdline;
@@ -123,7 +115,6 @@ void spawnShell(){
         tokens = CmdSplit(cmdline);
         cmds = CmdParse(tokens, cmdline);
         if( evalCommand(cmds) == -1){
-            cout << "shell close" << endl;
             delete pipeManager;
             return ;
         }

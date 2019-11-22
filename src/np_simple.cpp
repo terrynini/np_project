@@ -13,7 +13,7 @@ extern pid_t tailCommand;
 extern bool tailPipe;
 extern PipeManager* pipeManager;
 extern UserManager* userManager;
-
+struct shared_st *shared;
 void childHandler(int signo){
   while (waitpid(-1, NULL, WNOHANG) > 0);
 }
@@ -29,6 +29,7 @@ void init(){
     signal(SIGCHLD, childHandler);
     initBuildin();
     userManager = 0;
+    shared = 0;
 }
 
 void spawnShell(){

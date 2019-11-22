@@ -96,4 +96,3 @@ void user::saveEnv(){
             this->env.push_back(environ[i++]);
     }
 }
-

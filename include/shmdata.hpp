@@ -17,7 +17,7 @@ struct userInfo{
 
  struct shared_st
 {
-    struct userInfo userTable[30];
+    struct userInfo userTable[50];
     char   broadcastMessage[100];
 };
 

@@ -15,6 +15,7 @@ extern pid_t tailCommand;
 extern bool tailPipe;
 extern PipeManager* pipeManager;
 extern UserManager* userManager;
+struct shared_st *shared;
 extern std::array<std::array<std::array<int,2>,USERMAX+1>,USERMAX+1> userPipe;
 
 int input ;
@@ -50,6 +51,7 @@ void init(){
     ios_base::sync_with_stdio(false);
     cin.tie(0);
     signal(SIGCHLD, childHandler);
+    shared = 0;
     userManager = new UserManager();
     initBuildin();
     for(int i = 0 ; i < USERMAX+1; i++)
