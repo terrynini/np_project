@@ -10,6 +10,8 @@
 #include <sys/shm.h>
 #include <cstring>
 #include <signal.h>
+#include <fcntl.h> 
+#include <unistd.h>
 #define USERMAX 30
 
 using namespace std;
@@ -36,6 +38,17 @@ void clientHandler(int signo){
     cout << shared->broadcastMessage << flush;
 }
 
+void fifoHandle(int signo){
+    if(shared->userPipe[shared->userPipeInfo][currentUser->pid][0] != -1){
+        close(shared->userPipe[shared->userPipeInfo][currentUser->pid][0]);
+        shared->userPipe[shared->userPipeInfo][currentUser->pid][0] = -1;
+    }else{
+        usleep(10000);
+        std::string fifo_path = "user_pipe/" + std::to_string(shared->userPipeInfo) + "_" + std::to_string(currentUser->uid) ;
+        shared->userPipe[shared->userPipeInfo][currentUser->uid][1] = open(fifo_path.c_str(), O_RDONLY);
+    }
+}
+
 void registerUser(int pid, sockaddr_in* client){
     for(int i = 1 ; i < USERMAX+1 ; i++){
         if(shared->userTable[i].pid == 0){
@@ -50,6 +63,7 @@ void registerUser(int pid, sockaddr_in* client){
 
 void logout(){
     std::string name = ( currentUser->user_name[0] == 0 ? "(no name)": currentUser->user_name);
+    //TODO: clear fifo
     broadcast("*** User '"+ name +"' left. ***\n");
     bzero(currentUser, sizeof(struct userInfo));
 }
@@ -65,6 +79,7 @@ void init(){
     signal(SIGCHLD, childHandler);
     signal(SIGINT, intHandler);
     signal(SIGUSR1, clientHandler);
+    signal(SIGUSR2, fifoHandle);
     shmid = shmget((key_t)5566, sizeof(struct shared_st), 0666|IPC_CREAT);
     if(shmid == -1){
         cerr << "shmid failed" << endl;
@@ -77,6 +92,7 @@ void init(){
         exit(0);
     }
     bzero(shared,sizeof(struct shared_st));
+    memset(shared->userPipe, -1, sizeof(shared->userPipe));
     initBuildin();
 }
 

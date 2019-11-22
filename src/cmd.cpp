@@ -30,7 +30,6 @@ std::vector<std::string> CmdSplit(std::string cmdline){
     return tokens;
 }
 
-
 void broadcast(std::string message){
     strcpy(shared->broadcastMessage, message.c_str());
     for(int i = 0; i < USERMAX+1 ; i++){
