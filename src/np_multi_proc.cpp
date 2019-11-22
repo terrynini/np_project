@@ -41,7 +41,7 @@ void clientHandler(int signo){
 void fifoHandle(int signo){
     if(shared->userPipe[shared->userPipeInfo][currentUser->uid][1] < -1){
         shared->userPipe[shared->userPipeInfo][currentUser->uid][1] = -1;
-        close(-shared->userPipe[shared->userPipeInfo][currentUser->uid][0]);
+        close(shared->userPipe[shared->userPipeInfo][currentUser->uid][0]);
         shared->userPipe[shared->userPipeInfo][currentUser->uid][0] = -1;
         return;
     }
@@ -74,12 +74,13 @@ void logout(){
         if(shared->userPipe[i][currentUser->uid][0] != -1){
             close(shared->userPipe[i][currentUser->uid][0]);
             shared->userPipe[i][currentUser->uid][0] = -1;
+            shared->userPipe[i][currentUser->uid][1] = -1;
         }
         if(shared->userPipe[currentUser->uid][i][1] != -1){
             shared->userPipe[currentUser->uid][i][1] = -shared->userPipe[currentUser->uid][i][1];
             shared->userPipeInfo = currentUser->uid;
             kill(shared->userTable[i].pid,SIGUSR2);
-        }
+        } 
     }
     broadcast("*** User '"+ name +"' left. ***\n");
     bzero(currentUser, sizeof(struct userInfo));
@@ -120,7 +121,7 @@ void fini(){
 
 void serverBanner(){
     cout << "****************************************\n** Welcome to the information server. **\n****************************************" << endl;
-    for(int i = 0 ; ; i = (i+1)%USERMAX ){
+    for(int i = 0 ; ; i = (i+1)%(USERMAX+1)){
         if( shared->userTable[i].pid == c_pid ){
             currentUser = &shared->userTable[i];
             break;
