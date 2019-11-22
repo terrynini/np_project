@@ -11,14 +11,14 @@ struct userInfo{
     int pid;
     int uid;
     char user_name[21];
-    in_addr sin_addr;
+    char sin_addr[16];
     in_port_t sin_port;
 };
 
  struct shared_st
 {
     struct userInfo userTable[50];
-    char   broadcastMessage[100];
+    char   broadcastMessage[400];
 };
 
 #endif

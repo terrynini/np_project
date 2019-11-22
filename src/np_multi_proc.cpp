@@ -33,17 +33,17 @@ void intHandler(int signo){
 }
 
 void clientHandler(int signo){
+    cout << "INNNNN" << flush;
     cout << shared->broadcastMessage << flush;
 }
 
 void registerUser(int pid, sockaddr_in* client){
     for(int i = 0 ; i < USERMAX ; i++){
         if(shared->userTable[i].pid == 0){
-            shared->userTable[i].pid = pid;
-            shared->userTable[i].uid = i+1;
-            shared->userTable[i].sin_addr = client->sin_addr;
             shared->userTable[i].sin_port = client->sin_port;
-            currentUser = &shared->userTable[i];
+            strcpy(shared->userTable[i].sin_addr, inet_ntoa(client->sin_addr));
+            shared->userTable[i].uid = i+1;
+            shared->userTable[i].pid = pid;
             break;
         }
     }   
@@ -88,15 +88,15 @@ void fini(){
 
 void serverBanner(){
     cout << "****************************************\n** Welcome to the information server. **\n****************************************" << endl;
-    userInfo Me;
     for(int i = 0 ; ; i = (i+1)%USERMAX ){
         if( shared->userTable[i].pid == c_pid ){
-            Me = shared->userTable[i];
+            currentUser = &shared->userTable[i];
+            break;
         } 
-        break;
     }
-    string name =  Me.user_name[0] == '\00' ? "(no name)" : Me.user_name;
-    broadcast("*** User '" + name + "' entered from " + inet_ntoa(Me.sin_addr) + ":" + std::to_string(ntohs(Me.sin_port)) + ". ***\n");
+    string name =  currentUser->user_name[0] == '\00' ? "(no name)" : currentUser->user_name;
+    string message = "*** User '" + name + "' entered from " + currentUser->sin_addr + ":" + std::to_string(ntohs(currentUser->sin_port)) + ". ***\n";
+    broadcast(message);
 }
 
 void spawnShell(){
@@ -108,7 +108,7 @@ void spawnShell(){
     string cmdline;
     vector<string> tokens;
     vector<Cmd*> cmds;
-    cin.clear();
+    //cin.clear();
     c_pid = getpid();
     serverBanner();
     while(std::cout << "% " << flush && getline(cin, cmdline)){

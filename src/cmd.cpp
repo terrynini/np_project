@@ -32,9 +32,9 @@ std::vector<std::string> CmdSplit(std::string cmdline){
 
 
 void broadcast(std::string message){
+    strcpy(shared->broadcastMessage, message.c_str());
     for(int i = 0; i < USERMAX+1 ; i++){
         if(shared->userTable[i].pid > 0){
-            strcpy(shared->broadcastMessage, message.c_str());
             kill(shared->userTable[i].pid, SIGUSR1);
         }
     }
@@ -250,7 +250,7 @@ void server3Buildin(){
                 std::cout << "(no name)\t";
             else
                 std::cout << shared->userTable[i].user_name << "\t";
-            std::cout << inet_ntoa(shared->userTable[i].sin_addr) << ":" << ntohs(shared->userTable[i].sin_port) << "\t";
+            std::cout << shared->userTable[i].sin_addr << ":" << ntohs(shared->userTable[i].sin_port) << "\t";
             if( shared->userTable[i].uid == currentUser->uid )
                 std::cout << "<-me";
             std::cout << std::endl;
@@ -293,15 +293,15 @@ void server3Buildin(){
         if(argv.size() < 2)
             std::cerr << "Need more argument" << std::endl;
         else{
-            for(auto &user : userManager->users){
-                if(user.username == cmdstr.substr(argv[0].size()+1)){
-                    std::cout << "*** User '" + user.username +"' already exists. ***" << std::endl;
+            for(int i = 0 ;i < USERMAX+1 ;i++){
+                if( !strcmp(shared->userTable[i].user_name ,cmdstr.substr(argv[0].size()+1).c_str())){
+                    std::cout << "*** User '" << shared->userTable[i].user_name << "' already exists. ***" << std::endl;
                     return true;
                 }
             }
             strcpy(currentUser->user_name, cmdstr.substr(argv[0].size()+1).c_str());
             std::string message = "*** User from ";
-            message += inet_ntoa(currentUser->sin_addr);
+            message += currentUser->sin_addr;
             message += ":" + std::to_string(ntohs(currentUser->sin_port)) + " is named '"+ cmdstr.substr(argv[0].size()+1) +"'. ***\n";
             broadcast(message);
         }
