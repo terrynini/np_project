@@ -10,7 +10,7 @@
 #include <sys/stat.h> 
 #include <signal.h>
 
-
+#define USERMAX 30
 extern UserManager* userManager;
 extern shared_st* shared;
 extern void broadcast(std::string);
@@ -128,12 +128,16 @@ void PipeManager::getIO(Cmd* cmd,std::array<int,2> &pair){
             }else{
                 if(shared->userPipe[currentUser->uid][id][1] == -1){
                     //openFIFO(temp);
-                    std::string fifo_path = "user_pipe/" + std::to_string(currentUser->uid) + "_" + std::to_string(id);
-                    while(mkfifo(fifo_path.c_str(), 0666) < 0 ){
-                        shared->userPipeInfo = currentUser->uid;
-                        kill(id, SIGUSR2);
-                    }
-                    kill(id,SIGUSR2);
+                    std::string fifo_path = "./user_pipe/" + std::to_string(currentUser->uid) + "_" + std::to_string(id);
+                    shared->userPipeInfo = currentUser->uid;
+                    if((mkfifo(fifo_path.c_str(), 0666) <0) && (errno != EEXIST))
+                        std::cout << "Create FIFO fail" << std::endl;
+                    /*while( mkfifo(fifo_path.c_str(), 0666) < 0 ) {
+                        kill(shared->userTable[id].pid, SIGUSR2);
+                        usleep(10000);
+                        std::cout << " try.." << std::endl;
+                    } */
+                    kill(shared->userTable[id].pid,SIGUSR2);
                     shared->userPipe[currentUser->uid][id][1] = open(fifo_path.c_str(), O_WRONLY);
                     //shared->userPipe[currentUser->uid][id][0] =  temp[0];
                     pair[1] = shared->userPipe[currentUser->uid][id][1];
@@ -193,6 +197,20 @@ void clearUserpipe(Cmd* cmd, bool all){
             }
         }
     }else if(shared){
+        if(cmd->userp_in != ""){
+            id = std::stoi(cmd->userp_in.substr(1));
+            if(shared->userPipe[id][currentUser->uid][0] != -1){
+                close(shared->userPipe[id][currentUser->uid][0]);
+                shared->userPipe[id][currentUser->uid][0] = -1;
+            }
+        }
 
+        if(cmd->userp_out != ""){
+            id = std::stoi(cmd->userp_out.substr(1));
+            if(shared->userPipe[currentUser->uid][id][1] != -1){
+                close(shared->userPipe[currentUser->uid][id][1]);
+                shared->userPipe[currentUser->uid][id][1]  = -1;
+            }
+        }
     }
 }

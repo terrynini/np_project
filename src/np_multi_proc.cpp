@@ -39,13 +39,13 @@ void clientHandler(int signo){
 }
 
 void fifoHandle(int signo){
-    if(shared->userPipe[shared->userPipeInfo][currentUser->pid][0] != -1){
-        close(shared->userPipe[shared->userPipeInfo][currentUser->pid][0]);
-        shared->userPipe[shared->userPipeInfo][currentUser->pid][0] = -1;
+    if(shared->userPipe[shared->userPipeInfo][currentUser->uid][0] != -1){
+        close(shared->userPipe[shared->userPipeInfo][currentUser->uid][0]);
+        shared->userPipe[shared->userPipeInfo][currentUser->uid][0] = -1;
     }else{
         usleep(10000);
-        std::string fifo_path = "user_pipe/" + std::to_string(shared->userPipeInfo) + "_" + std::to_string(currentUser->uid) ;
-        shared->userPipe[shared->userPipeInfo][currentUser->uid][1] = open(fifo_path.c_str(), O_RDONLY);
+        std::string fifo_path = "./user_pipe/" + std::to_string(shared->userPipeInfo) + "_" + std::to_string(currentUser->uid) ;
+        shared->userPipe[shared->userPipeInfo][currentUser->uid][0] = open(fifo_path.c_str(), O_RDONLY);
     }
 }
 

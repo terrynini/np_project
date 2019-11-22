@@ -64,7 +64,7 @@ std::vector<Cmd*> CmdParse(std::vector<std::string> tokens, std::string cmdline)
                 redirect = true;
                 work->flow = token;//">";
                 work->cmdStr += " " + token;
-            }else if(userManager){
+            }else if(userManager || shared){
                 if( token[0] == '>'){
                     work->userp_out = token;        
                     work->cmdStr  += " " + token;
