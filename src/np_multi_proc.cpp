@@ -41,7 +41,7 @@ void clientHandler(int signo){
 void fifoHandle(int signo){
     if(shared->userPipe[shared->userPipeInfo][currentUser->uid][1] < -1){
         shared->userPipe[shared->userPipeInfo][currentUser->uid][1] = -1;
-        close(shared->userPipe[shared->userPipeInfo][currentUser->uid][0]);
+        close(-shared->userPipe[shared->userPipeInfo][currentUser->uid][0]);
         shared->userPipe[shared->userPipeInfo][currentUser->uid][0] = -1;
         return;
     }
