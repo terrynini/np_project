@@ -37,11 +37,11 @@ void clientHandler(int signo){
 }
 
 void registerUser(int pid, sockaddr_in* client){
-    for(int i = 0 ; i < USERMAX ; i++){
+    for(int i = 1 ; i < USERMAX+1 ; i++){
         if(shared->userTable[i].pid == 0){
             shared->userTable[i].sin_port = client->sin_port;
             strcpy(shared->userTable[i].sin_addr, inet_ntoa(client->sin_addr));
-            shared->userTable[i].uid = i+1;
+            shared->userTable[i].uid = i;
             shared->userTable[i].pid = pid;
             break;
         }
