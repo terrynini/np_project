@@ -17,6 +17,7 @@ struct userInfo{
 
  struct shared_st
 {
+    int usercount;
     struct userInfo userTable[50];
     char   broadcastMessage[400];
     int    userPipe[31][31][2];

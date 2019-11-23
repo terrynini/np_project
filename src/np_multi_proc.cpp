@@ -23,7 +23,6 @@ pid_t c_pid;
 int shmid;
 struct shared_st *shared;
 extern userInfo* currentUser;
-int usercount = 0;
 void childHandler(int signo){
     while (waitpid(-1, NULL, WNOHANG) > 0);
 }
@@ -84,7 +83,7 @@ void logout(){
     }
     broadcast("*** User '"+ name +"' left. ***\n");
     bzero(currentUser, sizeof(struct userInfo));
-    usercount -= 1;
+    shared->usercount -= 1;
 }
 
 void waitTail(){
@@ -113,7 +112,7 @@ void init(){
     bzero(shared,sizeof(struct shared_st));
     memset(shared->userPipe, -1, sizeof(shared->userPipe));
     initBuildin();
-    usercount = 0;
+    shared->usercount = 0;
 }
 
 void fini(){
@@ -172,12 +171,12 @@ int main(int argc, char** argv){
     int infd = 0;
     while(1){
         infd = accept(sockfd, (struct sockaddr *)&clientInfo, &addrlen);
-        if(usercount >= USERMAX)
+        if(shared->usercount >= USERMAX)
         {
             close(infd);
             continue;
         }
-        usercount += 1;
+        shared->usercount += 1;
         pid_t pid;
         while((pid = fork()) == -1)
         {   
