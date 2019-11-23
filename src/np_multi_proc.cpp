@@ -23,7 +23,7 @@ pid_t c_pid;
 int shmid;
 struct shared_st *shared;
 extern userInfo* currentUser;
-
+int usercount = 0;
 void childHandler(int signo){
     while (waitpid(-1, NULL, WNOHANG) > 0);
 }
@@ -112,6 +112,7 @@ void init(){
     bzero(shared,sizeof(struct shared_st));
     memset(shared->userPipe, -1, sizeof(shared->userPipe));
     initBuildin();
+    usercount = 0;
 }
 
 void fini(){
@@ -170,6 +171,11 @@ int main(int argc, char** argv){
     int infd = 0;
     while(1){
         infd = accept(sockfd, (struct sockaddr *)&clientInfo, &addrlen);
+        if(usercount >= USERMAX)
+        {
+            close(sockfd);
+            continue;
+        }
         pid_t pid;
         while((pid = fork()) == -1)
         {   
