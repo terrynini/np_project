@@ -170,12 +170,12 @@ int main(int argc, char** argv){
     socklen_t addrlen = sizeof(clientInfo);
     int infd = 0;
     while(1){
-        infd = accept(sockfd, (struct sockaddr *)&clientInfo, &addrlen);
         if(shared->usercount >= USERMAX)
         {
-            close(infd);
+            usleep(10000);
             continue;
-        }
+        }    
+        infd = accept(sockfd, (struct sockaddr *)&clientInfo, &addrlen);
         pid_t pid;
         while((pid = fork()) == -1)
         {   
