@@ -84,6 +84,7 @@ void logout(){
     }
     broadcast("*** User '"+ name +"' left. ***\n");
     bzero(currentUser, sizeof(struct userInfo));
+    usercount -= 1;
 }
 
 void waitTail(){
@@ -173,9 +174,10 @@ int main(int argc, char** argv){
         infd = accept(sockfd, (struct sockaddr *)&clientInfo, &addrlen);
         if(usercount >= USERMAX)
         {
-            close(sockfd);
+            close(infd);
             continue;
         }
+        usercount += 1;
         pid_t pid;
         while((pid = fork()) == -1)
         {   
