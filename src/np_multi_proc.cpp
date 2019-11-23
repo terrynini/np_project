@@ -176,13 +176,13 @@ int main(int argc, char** argv){
             close(infd);
             continue;
         }
-        shared->usercount += 1;
         pid_t pid;
         while((pid = fork()) == -1)
         {   
             usleep(5000);
         }
         if(pid != 0){
+            shared->usercount += 1;
             registerUser(pid, &clientInfo);
             close(infd);
         }else{
