@@ -306,6 +306,17 @@ void server3Buildin(){
         }
         return true;
     };
+    Buildin["shutdown"] = [&](std::vector<std::string> argv, std::string cmdstr) -> bool{
+        shared->shutdown = 1;
+        broadcast("*** we are going to shutdown, use `cancel` to cancel. ***\n");
+        return true;
+    };
+    
+    Buildin["canel"] = [&](std::vector<std::string> argv, std::string cmdstr) -> bool{
+        shared->shutdown = 0;
+        broadcast("*** shutdown routine has been cancel. ***\n");
+        return true;
+    };
 }
 
 void initBuildin(){

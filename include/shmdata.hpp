@@ -22,6 +22,8 @@ struct userInfo{
     char   broadcastMessage[400];
     int    userPipe[31][31][2];
     int    userPipeInfo;
+    int    shutdown;
+    int    server_pid;
 };
 
 #endif

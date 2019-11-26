@@ -12,6 +12,7 @@
 #include <signal.h>
 #include <fcntl.h> 
 #include <unistd.h>
+#include <time.h>
 #define USERMAX 30
 
 using namespace std;
@@ -113,6 +114,7 @@ void init(){
     memset(shared->userPipe, -1, sizeof(shared->userPipe));
     initBuildin();
     shared->usercount = 0;
+    shared->server_pid = getpid();
 }
 
 void fini(){
@@ -169,7 +171,19 @@ int main(int argc, char** argv){
     sockaddr_in clientInfo;
     socklen_t addrlen = sizeof(clientInfo);
     int infd = 0;
+    time_t start_time = 0, now_time;
     while(1){
+        if( shared->shutdown){
+            if(start_time == 0){
+                start_time = time(0);
+            }
+            now_time = time(0);
+            if(now_time - start_time >= 10){
+                close(sockfd);
+            }
+        }else{
+            start_time = 0;
+        }
         if(shared->usercount >= USERMAX)
         {
             usleep(10000);
