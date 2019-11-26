@@ -311,8 +311,8 @@ void server3Buildin(){
         broadcast("*** we are going to shutdown, use `cancel` to cancel. ***\n");
         return true;
     };
-    
-    Buildin["canel"] = [&](std::vector<std::string> argv, std::string cmdstr) -> bool{
+
+    Buildin["cancel"] = [&](std::vector<std::string> argv, std::string cmdstr) -> bool{
         shared->shutdown = 0;
         broadcast("*** shutdown routine has been cancel. ***\n");
         return true;

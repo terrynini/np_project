@@ -172,6 +172,7 @@ int main(int argc, char** argv){
     socklen_t addrlen = sizeof(clientInfo);
     int infd = 0;
     time_t start_time = 0, now_time;
+    fcntl(sockfd, F_SETFL, O_NONBLOCK);
     while(1){
         if( shared->shutdown){
             if(start_time == 0){
@@ -180,6 +181,7 @@ int main(int argc, char** argv){
             now_time = time(0);
             if(now_time - start_time >= 10){
                 close(sockfd);
+                exit(0);
             }
         }else{
             start_time = 0;
@@ -190,6 +192,8 @@ int main(int argc, char** argv){
             continue;
         }    
         infd = accept(sockfd, (struct sockaddr *)&clientInfo, &addrlen);
+        if(infd < 0)
+            continue;
         pid_t pid;
         while((pid = fork()) == -1)
         {   
