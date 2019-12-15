@@ -52,7 +52,7 @@ private:
                     boost::replace_all(message, "\"", "\\\"");
                     boost::replace_all(message, "\'", "\\\'");
                     cout << "<script>document.getElementById('" << tag << "').innerHTML += '" << message << "';</script>" << endl;
-                    if (message.find("% ") != string::npos) {
+                    if (message.find("% ") == string::npos) {
                         do_read();
                     } else {
                         do_write();
@@ -64,7 +64,8 @@ private:
     void do_write()
     {
         std::string cmd;
-        commands >> cmd;
+        if(!getline(commands,cmd))
+            return;
         cmd += "\n";
         auto self(shared_from_this());
         _socket.async_send(
