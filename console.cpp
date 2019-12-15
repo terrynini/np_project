@@ -58,6 +58,7 @@ private:
                         do_read();
                     } else {
                         do_write();
+                        do_read();
                     }
                 }
             });
@@ -72,16 +73,15 @@ private:
         auto self(shared_from_this());
         _socket.async_send(
             buffer(cmd, cmd.length()),
-            [this, self, &cmd](boost::system::error_code ec, size_t /* length */) {
+            [this, self, cmd](boost::system::error_code ec, size_t /* length */) {
                 if (!ec){
-                    std::string message = cmd;
-                    boost::replace_all(message, "\n", "&NewLine;");
-                    boost::replace_all(message, "\"", "\\\"");
-                    boost::replace_all(message, "\'", "\\\'");
-                    boost::replace_all(message, "<", "&#60;");
-                    boost::replace_all(message, ">", "&#62;");
-                    cout << "<script>document.getElementById('" << tag << "').innerHTML += '<b>" << cmd << "</b>';</script>" << endl;
-                    do_read();
+                    std::string msg = cmd;
+                    boost::replace_all(msg, "\n", "&NewLine;");
+                    boost::replace_all(msg, "\"", "\\\"");
+                    boost::replace_all(msg, "\'", "\\\'");
+                    boost::replace_all(msg, "<", "&#60;");
+                    boost::replace_all(msg, ">", "&#62;");
+                    cout << "<script>document.getElementById('" << tag << "').innerHTML += '<b>" << msg << "</b>';</script>" << endl;
                 }
             });
     }
