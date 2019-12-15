@@ -6,7 +6,7 @@ CXX_LIB_DIRS=/usr/local/lib
 CXX_LIB_PARAMS=$(addprefix -L , $(CXX_LIB_DIRS))
 
 all: console http_server
-
+	mv console console.cgi
 %: %.cpp
 	$(CXX) $< -o $@ $(CXX_INCLUDE_PARAMS) $(CXX_LIB_PARAMS) $(CXXFLAGS)
 
