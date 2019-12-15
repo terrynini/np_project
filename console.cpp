@@ -51,7 +51,9 @@ private:
                     boost::replace_all(message, "\n", "&NewLine;");
                     boost::replace_all(message, "\"", "\\\"");
                     boost::replace_all(message, "\'", "\\\'");
-                    cout << "<script>document.getElementById('" << tag << "').innerHTML += '<pre>" << message << "</pre>';</script>" << endl;
+                    boost::replace_all(message, "<", "&#60;");
+                    boost::replace_all(message, ">", "&#62;");
+                    cout << "<script>document.getElementById('" << tag << "').innerHTML += '" << message << "';</script>" << endl;
                     if (message.find("% ") == string::npos) {
                         do_read();
                     } else {
@@ -70,9 +72,14 @@ private:
         auto self(shared_from_this());
         _socket.async_send(
             buffer(cmd, cmd.length()),
-            [this, self, cmd](boost::system::error_code ec, size_t /* length */) {
+            [this, self, &cmd](boost::system::error_code ec, size_t /* length */) {
                 if (!ec){
-                    boost::replace_all(cmd, "\n", "&NewLine;");
+                    std::string message = cmd;
+                    boost::replace_all(message, "\n", "&NewLine;");
+                    boost::replace_all(message, "\"", "\\\"");
+                    boost::replace_all(message, "\'", "\\\'");
+                    boost::replace_all(message, "<", "&#60;");
+                    boost::replace_all(message, ">", "&#62;");
                     cout << "<script>document.getElementById('" << tag << "').innerHTML += '<b>" << cmd << "</b>';</script>" << endl;
                     do_read();
                 }
