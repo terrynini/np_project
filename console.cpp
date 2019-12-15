@@ -77,6 +77,7 @@ private:
                 if (!ec){
                     std::string msg = cmd;
                     boost::replace_all(msg, "\n", "&NewLine;");
+                    boost::replace_all(msg, "\r", "");
                     boost::replace_all(msg, "\"", "\\\"");
                     boost::replace_all(msg, "\'", "\\\'");
                     boost::replace_all(msg, "<", "&#60;");
