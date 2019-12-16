@@ -102,6 +102,7 @@ int main(int argc, char** argv, char** envp)
          << endl;
     ip::tcp::resolver resolver(io_service);
     ip::tcp::resolver::iterator end;
+    if(getenv("QUERY_STRING") != ""){
     std::string query(getenv("QUERY_STRING"));
     std::vector<std::string> parameter;
     boost::split(parameter, query, [](char c) { return c == '&'; });
@@ -110,7 +111,7 @@ int main(int argc, char** argv, char** envp)
         boost::split(temp, i, [](char c) { return c == '='; });
         GET_[temp[0]] = temp[1];
     }
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 5; i++) {
         if (GET_["h" + to_string(i)] != "" && GET_["p" + to_string(i)] != "" && GET_["f" + to_string(i)] != "") {
             ip::tcp::resolver::iterator ei = resolver.resolve(ip::tcp::resolver::query(GET_["h" + to_string(i)], GET_["p" + to_string(i)]));
             if (ei != end) {
@@ -123,6 +124,7 @@ int main(int argc, char** argv, char** envp)
                 add->connect();
             }
         }
+    }
     }
     htmlbody();
     io_service.run();

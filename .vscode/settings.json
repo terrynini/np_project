@@ -59,6 +59,8 @@
         "cinttypes": "cpp",
         "typeindex": "cpp",
         "typeinfo": "cpp",
-        "*.ipp": "cpp"
+        "*.ipp": "cpp",
+        "numeric": "cpp",
+        "random": "cpp"
     }
 }
