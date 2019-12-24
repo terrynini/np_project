@@ -11,7 +11,7 @@
 using namespace std;
 using namespace boost::asio;
 
-boost::asio::deadline_timer timer;
+
 
 class shellSession : public enable_shared_from_this<shellSession> {
 private:
@@ -26,9 +26,11 @@ public:
     std::string tag;
     std::string port;
     std::fstream commands;
+    boost::asio::deadline_timer timer;
     shellSession(ip::tcp::endpoint ep, boost::asio::io_service& io_service)
         : _ep(move(ep))
         , _socket(io_service)
+        , timer(io_service)
     {
     }
     void connect()
@@ -105,7 +107,6 @@ std::map<std::string, std::string> GET_;
 int main(int argc, char** argv, char** envp)
 {
     io_service io_service;
-    timer(io_service);
     cout << "Content-type: text/html" << endl
          << endl;
     ip::tcp::resolver resolver(io_service);
