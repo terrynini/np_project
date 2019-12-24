@@ -11,6 +11,8 @@
 using namespace std;
 using namespace boost::asio;
 
+boost::asio::deadline_timer timer;
+
 class shellSession : public enable_shared_from_this<shellSession> {
 private:
     enum { max_length = 1024 };
@@ -57,8 +59,13 @@ private:
                     if (message.find("% ") == string::npos) {
                         do_read();
                     } else {
-                        do_write();
-                        do_read();
+                        timer.expires_from_now(boost::posix_time::seconds(2));
+                        timer.async_wait([this,self](boost::system::error_code ec){
+                            if(!ec){
+                                do_write();
+                                do_read();
+                            }
+                        });
                     }
                 }
             });
@@ -98,6 +105,7 @@ std::map<std::string, std::string> GET_;
 int main(int argc, char** argv, char** envp)
 {
     io_service io_service;
+    timer(io_service);
     cout << "Content-type: text/html" << endl
          << endl;
     ip::tcp::resolver resolver(io_service);
