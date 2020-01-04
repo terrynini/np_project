@@ -6,10 +6,8 @@
 #include "socket.hpp"
 
 #define BUF_SIZE 60000
-#define IS_SOCK4A(x) (!(x & 0x00ffffff)) && (x & 0xff000000)
+#define IS_SOCKS4A(x) (!(x & 0x00ffffff)) && (x & 0xff000000)
 using namespace std;
-
-
 
 class Socks4 {
 public:
@@ -20,20 +18,36 @@ public:
     char* sp_user_id;
     u_char* request;
     int client_fd;
+    char sp_dst_ip_cstr[INET_ADDRSTRLEN];
     sockaddr_in client_addr;
-    u_char replay[8];
-    Socks4(int client_fd,sockaddr_in client_addr);
+    u_char reply[8];
+    Socks4(int client_fd, sockaddr_in client_addr);
     ~Socks4();
     void transport(int from_fd, int to_fd);
     void Read();
+    void Parse();
+    void FireWall();
+    void Info();
+    void Reject();
+    void ConnectMode();
+    void BindMode();
+    void Run();
 };
 
-void
-socks4_handler(int client, const sockaddr_in client_adr)
+void Socks4::Run()
 {
-    Socks4 service(client,client_adr);
-    service.Read();
-    
+    Read();
+    Parse();
+    FireWall();
+    Info();
+    Reject();
+    if (sp_cd == 1) {
+        ConnectMode();
+    } else if (sp_cd == 2) {
+        BindMode();
+    } else {
+        error("Bad sock4 request, CD = " + std::to_string(sp_cd));
+    }
 }
 
 int main(int argc, char const* argv[])
@@ -60,14 +74,15 @@ int main(int argc, char const* argv[])
             close(ssock);
         } else {
             close(msock);
-            socks4_handler(ssock, fsin);
+            Socks4 service(ssock, fsin);
+            service.Run();
             exit(0);
         }
     }
     return 0;
 }
 
-Socks4::Socks4(int client_fd,sockaddr_in client_addr)
+Socks4::Socks4(int client_fd, sockaddr_in client_addr)
 {
     this->client_fd = client_fd;
     this->client_addr = client_addr;
@@ -80,31 +95,49 @@ Socks4::~Socks4()
 
 void Socks4::Read()
 {
-    u_char request[BUF_SIZE];
-    int read_count = read(client_fd, request, BUF_SIZE);
-    if (read_count == -1)
-        error("Client connection fail");
-    if (read_count == 0) {
-        cout << "Client disconnect" << endl;
-        exit(0);
-    }
-    this->request = (u_char*)malloc(read_count);
-    memcpy(this->request, request, read_count);
+
 }
 
 /* exit(0) if read eof from from_fd */
 void Socks4::transport(int from_fd, int to_fd)
 {
-    char buffer[BUF_SIZE] = { 0 };
-    int read_count = read(from_fd, buffer, BUF_SIZE);
-    if (read_count == 0) { /* read() eof */
-        exit(0);
-    } else if (read_count == -1) {
-        error("Read error");
-    } else {
-        int write_count = write(to_fd, buffer, read_count);
-        if (write_count != read_count) {
-            cout << "[Warning] from_fd -> to_fd:  write_count != read_count" << endl;
-        }
+
+}
+
+void Socks4::Parse()
+{
+    sp_vn = request[0];
+    sp_cd = request[1];
+    sp_dst_port = request[2] << 8 | request[3];
+    sp_dst_ip = ((u_int*)request)[1];
+    sp_user_id = (char*)request + 8;
+    if (sp_vn != 4) {
+        error("Bad sock4 request, VN = " + sp_vn);
     }
+
+}
+
+void Socks4::FireWall()
+{
+
+}
+
+void Socks4::Info()
+{
+
+}
+
+void Socks4::Reject()
+{
+
+}
+
+void Socks4::ConnectMode()
+{
+
+}
+
+void Socks4::BindMode()
+{
+
 }
