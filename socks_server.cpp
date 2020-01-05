@@ -1,37 +1,41 @@
+#include <arpa/inet.h>
+#include <boost/algorithm/string/replace.hpp>
+#include <boost/xpressive/xpressive.hpp>
 #include <fstream>
 #include <iostream>
-#include <signal.h>
-#include <unistd.h>
-#include <string.h> 
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include <netdb.h>
+#include <netinet/in.h>
+#include <signal.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
-#define BUF_SIZE 60000
+#define MAXSIZE 10000
 #define IS_SOCKS4A(x) (!(x & 0x00ffffff)) && (x & 0xff000000)
+#define REJECT 91
+#define ACCEPT 90
 using namespace std;
+using namespace boost::xpressive;
 
 class Socks4 {
 public:
-    u_char sp_vn;
-    u_char sp_cd;
-    u_int sp_dst_port;
-    u_int sp_dst_ip;
-    char* sp_user_id;
+    u_char vn;
+    u_char cd;
+    u_int dst_port;
+    u_int dst_ip;
+    char* user_id;
     u_char* request;
     int client_fd;
-    char sp_dst_ip_cstr[INET_ADDRSTRLEN];
+    char dst_ip_cstr[INET_ADDRSTRLEN];
+    char ip_cstr[INET_ADDRSTRLEN];
     sockaddr_in client_addr;
-    u_char reply[8];
+    u_char response[8];
     Socks4(int client_fd, sockaddr_in client_addr);
     ~Socks4();
-    void transport(int from_fd, int to_fd);
-    void Read();
+    int Read(int, u_char*&);
     void Parse();
     void FireWall();
     void Info();
-    void Reject();
     void ConnectMode();
     void BindMode();
     void Run();
@@ -43,7 +47,7 @@ public:
     Server(int port);
     ~Server();
     static int genSock(int port);
-    static int genClient(char *ip, int port );
+    static int genClient(char* ip, int port);
     void Run();
 };
 
@@ -54,9 +58,11 @@ int main(int argc, char const* argv[])
     }
     signal(SIGCLD, SIG_IGN);
     Server server(atoi(argv[1]));
-    try  {
+    try {
         server.Run();
     } catch (const char* msg) {
+        cout << "[ ERROR ] " << msg << endl;
+    } catch (string msg){
         cout << "[ ERROR ] " << msg << endl;
     }
     return 0;
@@ -64,17 +70,13 @@ int main(int argc, char const* argv[])
 
 void Socks4::Run()
 {
-    Read();
     Parse();
     FireWall();
     Info();
-    Reject();
-    if (sp_cd == 1) {
+    if (cd == 1) {
         ConnectMode();
-    } else if (sp_cd == 2) {
+    } else if (cd == 2) {
         BindMode();
-    } else {
-        throw "Bad sock4 request, CD = " + std::to_string(sp_cd);
     }
 }
 
@@ -82,7 +84,7 @@ Socks4::Socks4(int client_fd, sockaddr_in client_addr)
 {
     this->client_fd = client_fd;
     this->client_addr = client_addr;
-    memset(this->reply, 0, 8);
+    memset(this->response, 0, 8);
 }
 
 Socks4::~Socks4()
@@ -90,124 +92,105 @@ Socks4::~Socks4()
     free(this->request);
 }
 
-void Socks4::Read()
+int Socks4::Read(int fd, u_char*& result)
 {
-    u_char request[BUF_SIZE];
-    int read_count = read(client_fd, request, BUF_SIZE);
-    if (read_count == -1)
+    u_char request[MAXSIZE];
+    int bytes = read(fd, request, MAXSIZE);
+    if (bytes == -1)
         throw "Client connection fail";
-    if (read_count == 0) {
-        cout << "Client disconnect" << endl;
-        exit(0);
+    if (bytes == 0) {
+        throw "Client disconnect";
     }
-    this->request = (u_char*)malloc(read_count);
-    memcpy(this->request, request, read_count);
+    result = (u_char*)malloc(bytes);
+    memcpy(result, request, bytes);
+    return bytes;
 }
 
 void Socks4::Parse()
 {
-
-    sp_vn = request[0];
-    sp_cd = request[1];
-    sp_dst_port = request[2] << 8 | request[3];
-    sp_dst_ip = request[7] << 24 | request[6] << 16 | request[5] << 8 | request[4];
-    sp_user_id = (char*)request + 8;
-    if (sp_vn != 4) {
-        throw "Bad sock4 request, VN = " + sp_vn;
+    Read(client_fd, request);
+    vn = request[0];
+    cd = request[1];
+    dst_port = request[2] << 8 | request[3];
+    dst_ip = ((u_int*)request)[1];
+    user_id = (char*)request + 8;
+    if (vn != 4) {
+        throw "Unsupport socks version: " + to_string(vn);
     }
-
-    if (IS_SOCKS4A(sp_dst_ip)) {
-        size_t user_id_len = strlen(sp_user_id);
-        char* sp_domain_name = sp_user_id + user_id_len + 1;
-        /* resolve ip address by domain_name */
-        struct hostent* phe;
-        if (phe = gethostbyname(sp_domain_name)) {
+    if (IS_SOCKS4A(dst_ip)) {
+        size_t user_id_len = strlen(user_id);
+        char* domain_name = user_id + user_id_len + 1;
+        struct hostent* phe = gethostbyname(domain_name);
+        if (phe) {
             struct sockaddr_in sin;
-            bcopy(phe->h_addr, (char*)&sin.sin_addr, phe->h_length);
-            inet_ntop(AF_INET, &sin.sin_addr, sp_dst_ip_cstr, INET_ADDRSTRLEN);
+            memcpy((char*)&sin.sin_addr, phe->h_addr, phe->h_length);
+            inet_ntop(AF_INET, &sin.sin_addr, dst_ip_cstr, INET_ADDRSTRLEN);
+            dst_ip = *((u_int*)phe->h_addr);
         } else {
-            throw "Get ip by domain_name failed, domain_name = " + string(sp_domain_name);
+            throw "Can not resolve domain name:" + string(domain_name);
         }
     } else {
-        inet_ntop(AF_INET, &sp_dst_ip, sp_dst_ip_cstr, INET_ADDRSTRLEN);
+        inet_ntop(AF_INET, &dst_ip, dst_ip_cstr, INET_ADDRSTRLEN);
     }
+    inet_ntop(AF_INET, &client_addr.sin_addr, ip_cstr, INET_ADDRSTRLEN);
 }
 
 void Socks4::FireWall()
 {
+    string grant, mode, rule, dst_ip(dst_ip_cstr), cmode;
+    smatch w;
     ifstream fin("socks.conf");
+    response[1] = REJECT;
     if (fin) {
-        string rule, mode, addr_str, addr_part[4];
-        reply[1] = 91; /* default with rejected */
-        while (fin >> rule >> mode >> addr_str) {
-            for (int i = 0; i < 4; i++) {
-                auto pos = addr_str.find_first_of('.');
-                if (pos != string::npos) {
-                    addr_part[i] = addr_str.substr(0, pos);
-                    addr_str.erase(0, pos + 1);
-                } else {
-                    addr_part[i] = addr_str;
-                }
-            }
-            if (((mode == "c" && sp_cd == 1) || (mode == "b" && sp_cd == 2)) && (addr_part[0] == "*" || ((u_char)stoul(addr_part[0]) == request[4])) && (addr_part[1] == "*" || ((u_char)stoul(addr_part[1]) == request[5])) && (addr_part[2] == "*" || ((u_char)stoul(addr_part[2]) == request[6])) && (addr_part[3] == "*" || ((u_char)stoul(addr_part[3]) == request[7]))) {
-                reply[1] = 90;
-                break;
-            }
+        cmode = (cd == 1 ? "c" : "b");
+        while (fin >> grant >> mode >> rule) {
+            boost::algorithm::replace_all(rule, ".", "\\.");
+            boost::algorithm::replace_all(rule, "*", ".*");
+            sregex re = sregex::compile(rule, regex_constants::icase);
+            if ((mode == cmode) && regex_match(dst_ip, w, re))
+                response[1] = (grant == "permit" ? ACCEPT : REJECT);
         }
     } else {
-        cout << "[Warning] Can not open \"socks.conf\", all accept" << endl;
-        reply[1] = 90;
+        response[1] = ACCEPT;
+    }
+    if (response[1] == REJECT) {
+        memcpy(response + 2, request + 2, 6);
+        write(client_fd, response, 8);
+        Info();
+        throw "FireWall: Connection reject";
     }
 }
 
 void Socks4::Info()
 {
-    char s_ip_cstr[INET_ADDRSTRLEN];
-    int s_port = ntohs(client_addr.sin_port);
-    inet_ntop(AF_INET, &client_addr.sin_addr, s_ip_cstr, INET_ADDRSTRLEN);
-    cout << "<S_IP>:    " << s_ip_cstr << endl
-         << "<S_PORT>:  " << s_port << endl
-         << "<D_IP>:    " << sp_dst_ip_cstr << endl
-         << "<D_PORT>:  " << sp_dst_port << endl
-         << "<Command>: " << ((sp_cd == 1) ? "CONNECT" : "BIND") << endl
-         << "<Reply>:   " << ((reply[1] == 90) ? "Accept" : "Reject") << endl
+    cout << "<S_IP>: " << ip_cstr << endl
+         << "<S_PORT>: " << ntohs(client_addr.sin_port) << endl
+         << "<D_IP>: " << dst_ip_cstr << endl
+         << "<D_PORT>: " << dst_port << endl
+         << "<Command>: " << ((cd == 1) ? "CONNECT" : "BIND") << endl
+         << "<Reply>: " << ((response[1] == ACCEPT) ? "Accept" : "Reject") << endl
          << endl;
-}
-
-void Socks4::Reject()
-{
-    /* reply reject */
-    if (reply[1] == 91) {
-        for (int i = 2; i < 8; i++) {
-            reply[i] = request[i];
-        }
-        write(client_fd, reply, 8);
-        exit(0);
-    }
 }
 
 void Socks4::ConnectMode()
 {
-    fd_set read_fdset, act_fdset;
-    FD_ZERO(&act_fdset);
-    /* reply accept */
-    for (int i = 2; i < 8; i++) {
-        reply[i] = request[i];
-    }
-    write(client_fd, reply, 8);
-    int target_fd = Server::genClient(sp_dst_ip_cstr, sp_dst_port);
-    /* transport data between socks client & target server */
+    memcpy(response + 2, request + 2, 6);
+    write(client_fd, response, 8);
+    int target_fd = Server::genClient(dst_ip_cstr, dst_port);
     int maxfd_num = max(client_fd, target_fd) + 1;
-    FD_SET(target_fd, &act_fdset);
-    FD_SET(client_fd, &act_fdset);
+    fd_set activate, fdset;
+    FD_ZERO(&fdset);
+    FD_SET(target_fd, &fdset);
+    FD_SET(client_fd, &fdset);
+    u_char* buffer;
     while (true) {
-        memcpy(&read_fdset, &act_fdset, sizeof(read_fdset));
-        if (select(maxfd_num, &read_fdset, NULL, NULL, NULL) > 0) {
-            if (FD_ISSET(client_fd, &read_fdset)) {
-                transport(client_fd, target_fd);
+        memcpy(&activate, &fdset, sizeof(activate));
+        if (select(maxfd_num, &activate, NULL, NULL, NULL)) {
+            if (FD_ISSET(client_fd, &activate)) {
+                write(target_fd, buffer, Read(client_fd, buffer));
             }
-            if (FD_ISSET(target_fd, &read_fdset)) {
-                transport(target_fd, client_fd);
+            if (FD_ISSET(target_fd, &activate)) {
+                write(client_fd, buffer, Read(target_fd, buffer));
             }
         }
     }
@@ -215,68 +198,41 @@ void Socks4::ConnectMode()
 
 void Socks4::BindMode()
 {
-    fd_set read_fdset, act_fdset;
-    FD_ZERO(&act_fdset);
+    fd_set activate, fdset;
     int bind_fd = Server::genSock(0);
     struct sockaddr_in bind_addr;
     u_int bind_addr_len = sizeof(bind_addr);
-    if (getsockname(bind_fd, (struct sockaddr*)&bind_addr, &bind_addr_len) == -1) {
-        throw "Can't get sockaddr_in of bind_fd";
-    }
-    /* reply accept */
-    reply[2] = (u_char)(ntohs(bind_addr.sin_port) / 256);
-    reply[3] = (u_char)(ntohs(bind_addr.sin_port) % 256);
-    for (int i = 4; i < 8; ++i) {
-        reply[i] = 0; /* 0.0.0.0 means the same ip to socks server */
-    }
-    write(client_fd, reply, 8);
-    /* connected from ftp server */
+    getsockname(bind_fd, (struct sockaddr*)&bind_addr, &bind_addr_len);
+    auto sport = ntohs(bind_addr.sin_port);
+    response[2] = sport >> 8;
+    response[3] = sport & 0xff;
+    memset(response + 4, 0, 4);
+    write(client_fd, response, 8);
     struct sockaddr_in ftp_addr;
     u_int ftp_addr_len = sizeof(ftp_addr);
     int ftp_fd = accept(bind_fd, (struct sockaddr*)&ftp_addr, &ftp_addr_len);
-    if (ftp_fd < 0) {
-        throw "Accept error : ftp_fd";
-    }
-    /* check the ip from the ftp server */
-    if (sp_dst_ip != ftp_addr.sin_addr.s_addr) {
-        reply[1] = 91;
-        write(client_fd, reply, 8); /* reply reject */
+    if (dst_ip != ftp_addr.sin_addr.s_addr) {
+        response[1] = 91;
+        write(client_fd, response, 8);
         char ftp_ip_cstr[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &ftp_addr.sin_addr, ftp_ip_cstr, INET_ADDRSTRLEN);
-        throw "Bad incoming connection, ip = " + string(ftp_ip_cstr);
+        throw "Wrong client, income: " + to_string(dst_ip) + " expected: " + to_string(ftp_addr.sin_addr.s_addr);
     }
-    /* reply again after being connected from ftp server */
-    write(client_fd, reply, 8);
-    /* transport data between socks client & ftp server */
+    write(client_fd, response, 8);
+    FD_ZERO(&fdset);
     int maxfd_num = max(client_fd, ftp_fd) + 1;
-    FD_SET(ftp_fd, &act_fdset);
-    FD_SET(client_fd, &act_fdset);
+    FD_SET(ftp_fd, &fdset);
+    FD_SET(client_fd, &fdset);
+    u_char* buffer;
     while (true) {
-        memcpy(&read_fdset, &act_fdset, sizeof(read_fdset));
-        if (select(maxfd_num, &read_fdset, NULL, NULL, NULL) > 0) {
-            if (FD_ISSET(client_fd, &read_fdset)) {
-                transport(client_fd, ftp_fd);
+        memcpy(&activate, &fdset, sizeof(activate));
+        if (select(maxfd_num, &activate, NULL, NULL, NULL) > 0) {
+            if (FD_ISSET(client_fd, &activate)) {
+                write(ftp_fd, buffer, Read(client_fd, buffer));
             }
-            if (FD_ISSET(ftp_fd, &read_fdset)) {
-                transport(ftp_fd, client_fd);
+            if (FD_ISSET(ftp_fd, &activate)) {
+                write(client_fd, buffer, Read(ftp_fd, buffer));
             }
-        }
-    }
-}
-
-/* exit(0) if read eof from from_fd */
-void Socks4::transport(int from_fd, int to_fd)
-{
-    char buffer[BUF_SIZE] = { 0 };
-    int read_count = read(from_fd, buffer, BUF_SIZE);
-    if (read_count == 0) { /* read() eof */
-        exit(0);
-    } else if (read_count == -1) {
-        throw "Read error";
-    } else {
-        int write_count = write(to_fd, buffer, read_count);
-        if (write_count != read_count) {
-            cout << "[Warning] from_fd -> to_fd:  write_count != read_count" << endl;
         }
     }
 }
@@ -286,29 +242,6 @@ Server::Server(int port)
     this->sock = genSock(port);
 }
 
-int Server::genSock(int port)
-{
-    struct sockaddr_in sin;
-    int sock;
-    memset((char*)&sin, 0, sizeof(sin));
-    sin.sin_family = AF_INET;
-    sin.sin_addr.s_addr = INADDR_ANY;
-    // sin.sin_addr.s_addr = inet_addr("127.0.0.1");
-    sin.sin_port = htons(port); // use port 0 and bind will use the next available high port.
-    /* Allocate a socket */
-    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-        throw "can't create socket: ";
-    /* Set socket option SO_REUSEADDR = true */
-    int opt_val = 1;
-    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt_val, sizeof(opt_val)) < 0)
-        throw "can't socket option: ";
-    /* Bind the socket */
-    if (bind(sock, (struct sockaddr*)&sin, sizeof(sin)) < 0)
-        throw "can't bind to " + to_string(port) + " port: ";
-    if (listen(sock, 30) < 0)
-        throw "can't listen on " + to_string(port) + " port: ";
-    return sock;
-}
 Server::~Server()
 {
     close(this->sock);
@@ -339,23 +272,39 @@ void Server::Run()
     }
 }
 
-int Server::genClient(char *ip, int port) {
-    struct hostent *phe;    /* pointer to host information entry */
-    struct sockaddr_in sin; /* an Internet endpoint address */
-    int sock;               /* socket descriptor */
-    bzero((char *)&sin, sizeof(sin));
+int Server::genSock(int port)
+{
+    struct sockaddr_in sin;
+    int opt_val = 1;
+    int sock;
+    memset((char*)&sin, 0, sizeof(sin));
     sin.sin_family = AF_INET;
-    /* Map service name to port number */
-    if ((sin.sin_port = htons((u_short)port)) == 0)
-        throw "can't get \"" + to_string(port) + "\" service entry";
-    /* Set IP address with dotted decimal */
-    if ((sin.sin_addr.s_addr = inet_addr(ip)) == INADDR_NONE)
-        throw "can't get \"" + string(ip) +"\" host entry\n";
-    /* Allocate a socket */
-    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-        throw "can't create socket: " ;
-    /* Connect the socket */
-    if (connect(sock, (struct sockaddr *)&sin, sizeof(sin)) < 0)
-        throw "can't connect to " + string(ip) + ":"+ to_string(port) + ": " ;
+    sin.sin_addr.s_addr = INADDR_ANY;
+    if(port == 0){
+        sin.sin_port = htons(INADDR_ANY);
+    }else{
+    sin.sin_port = htons(port); // use port 0 and bind will use the next available high port.
+    }
+    // sin.sin_addr.s_addr = inet_addr("127.0.0.1");
+    sock = socket(AF_INET, SOCK_STREAM, 0);
+    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt_val, sizeof(opt_val));
+    if (bind(sock, (struct sockaddr*)&sin, sizeof(sin)) < 0)
+        throw "getSock: can not bind on port " + to_string(port);
+    if (listen(sock, 30) < 0)
+        throw "getSock: can not listen on port" + to_string(port);
+    return sock;
+}
+
+int Server::genClient(char* ip, int port)
+{
+    struct sockaddr_in sin;
+    int sock;
+    memset((char*)&sin, 0, sizeof(sin));
+    sin.sin_family = AF_INET;
+    sin.sin_port = htons((u_short)port);
+    sin.sin_addr.s_addr = inet_addr(ip);
+    sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (connect(sock, (struct sockaddr*)&sin, sizeof(sin)) < 0)
+        throw "getClient: connection fail " + string(ip) + ":" + to_string(port);
     return sock;
 }
