@@ -36,17 +36,22 @@ public:
         auto self(shared_from_this());
         _socket.async_connect(_ep, [this, self](const boost::system::error_code& error) {
             if (!error) {
-                string request;
-                request += "\x04\x01";
+                char request[100];
+                memset(request, 0 , 100);
                 int port = stoi(this->port);
                 int ip;
-                request += port >> 8;
-                request += port & 0xff;
-                request += "\x00\x00\x00\x01\x00";
-                request += this->server + "\x00";
-                _socket.async_send(buffer(request,request.length()),[this, self](boost::system::error_code ec, size_t /* length */){
-                    _socket.async_read_some(buffer(_data, max_length),[this, self](boost::system::error_code ec, size_t  length ){
-                        //
+                request[0] = '\x04';
+                request[1] = '\x01';
+                request[2] = char((port >> 8));
+                request[3] = char(port & 0xff);
+                request[7] = 1;
+                memcpy(request+9, this->server.c_str(), this->server.length());
+                _socket.async_send(buffer(request,100),[this, self](boost::system::error_code ec, size_t /* length */){
+                    _socket.async_read_some(buffer(_data, 8),[this, self](boost::system::error_code ec, size_t  length ){
+                        if(_data[1] == 90){
+                            commands.open("./test_case/" + inputfile, std::fstream::in);
+                            this->do_read();
+                        }
                     });
                 });
             }
@@ -57,8 +62,9 @@ public:
         auto self(shared_from_this());
         commands.open("./test_case/" + inputfile, std::fstream::in);
         _socket.async_connect(_ep, [this, self](const boost::system::error_code& error) {
-            if (!error)
+            if (!error){
                 this->do_read();
+            }
         });
     }
 
