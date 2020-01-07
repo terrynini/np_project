@@ -224,6 +224,8 @@ void Socks4::BindMode()
     FD_SET(ftp_fd, &fdset);
     FD_SET(client_fd, &fdset);
     u_char* buffer;
+    int limit = 512*1024*1024;
+    int now = 0;
     while (true) {
         memcpy(&activate, &fdset, sizeof(activate));
         if (select(maxfd_num, &activate, NULL, NULL, NULL) > 0) {
@@ -231,7 +233,10 @@ void Socks4::BindMode()
                 write(ftp_fd, buffer, Read(client_fd, buffer));
             }
             if (FD_ISSET(ftp_fd, &activate)) {
-                write(client_fd, buffer, Read(ftp_fd, buffer));
+                if(now > limit){
+                    throw "Limit exceed";
+                }
+                now += write(client_fd, buffer, Read(ftp_fd, buffer));
             }
         }
     }
