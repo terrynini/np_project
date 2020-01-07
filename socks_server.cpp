@@ -224,7 +224,7 @@ void Socks4::BindMode()
     FD_SET(ftp_fd, &fdset);
     FD_SET(client_fd, &fdset);
     u_char* buffer;
-    int limit = 512*1024*1024;
+    int limit = 512*1024;
     int now = 0;
     while (true) {
         memcpy(&activate, &fdset, sizeof(activate));
