@@ -27,6 +27,7 @@ std::array<int,2> PipeManager::getPipe(int offset){
 
 void PipeManager::getIO(Cmd* cmd,std::array<int,2> &pair){
     int fileRedirect = 0;
+    int infileRedirect = 0;
     if(cmd->flow.size()){
         if(cmd->flow[0] == '|' || cmd->flow[0] == '!'){
             int offset = stoi(cmd->flow.substr(1));
@@ -41,9 +42,15 @@ void PipeManager::getIO(Cmd* cmd,std::array<int,2> &pair){
     }else{
         pair = this->getPipe(0);
     }
+    if(cmd->inflow.size()){
+        infileRedirect = open(cmd->inflow.substr(1).c_str(), O_RDWR);
+    }
     if(fileRedirect > 0){
         pair = this->getPipe(0);
         pair[1] = fileRedirect;
+    }
+    if(infileRedirect >0){
+        pair[0] = infileRedirect;
     }
 }
 

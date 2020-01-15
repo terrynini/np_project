@@ -25,11 +25,15 @@ std::vector<Cmd*> CmdParse(std::vector<std::string> tokens){
     cmds.push_back(new Cmd());
     Cmd* work = cmds.back();
     bool redirect = false;
-
+    bool inredirect = false;
     for (auto &token : tokens){
         if (redirect){
             work->flow += token;
             redirect = false;
+        }
+        else if (inredirect){
+            work->inflow += token;
+            inredirect = false;
         }
         else if(token[0] == '|' || token[0] == '!'){
             work->flow = token;
@@ -41,6 +45,10 @@ std::vector<Cmd*> CmdParse(std::vector<std::string> tokens){
         else if( token[0] == '>'){
             redirect = true;
             work->flow = ">";
+            
+        }else if(token[0] == '<'){
+            inredirect = true;
+            work->inflow = "<";
         }else{
             work->argv.push_back(token);
         }
@@ -79,6 +87,9 @@ void execute(Cmd* cmd){
             dup2(pair[1],2);  
         }
         pipeManager.prune();
+        if(cmd->inflow.size()){
+            close(pair[1]);
+        }
         if(cmd->Exec() == -1){
             std::cerr << "Unknown command: [" << cmd->argv[0] << "]." << std::endl;
             exit(0);

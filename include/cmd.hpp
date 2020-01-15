@@ -14,6 +14,7 @@ class Cmd{
 public:
     std::vector<std::string> argv;
     std::string flow;
+    std::string inflow;
     int Exec();
 };
 
