@@ -1,7 +1,5 @@
 **/.DS_Store
 *.o
-.vscode
+*vscode
 npshell
 build
-test_case
-note.txt
